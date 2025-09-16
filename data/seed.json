@@ -1,0 +1,41 @@
+{
+  "venues": [
+    {"id": "1", "name": "Kazakhstan Theater", "city": "Almaty"},
+    {"id": "2", "name": "Almaty Concert Hall", "city": "Almaty"}
+  ],
+  "halls": [
+    {"id": "1", "venue_id": "1", "name": "Main Hall", "capacity": 500},
+    {"id": "2", "venue_id": "1", "name": "Small Stage", "capacity": 200},
+    {"id": "3", "venue_id": "2", "name": "Grand Arena", "capacity": 1000}
+  ],
+  "events": [
+    {"id": "1", "hall_id": "1", "title": "Ballet: Swan Lake", "start": "2025-09-20T18:00", "end": "2025-09-20T21:00"},
+    {"id": "2", "hall_id": "2", "title": "Drama: Hamlet", "start": "2025-09-21T19:00", "end": "2025-09-21T21:30"},
+    {"id": "3", "hall_id": "3", "title": "Rock Concert: The Nomads", "start": "2025-09-22T20:00", "end": "2025-09-22T23:00"}
+  ],
+  "zones": [
+    {"id": "z1", "hall_id": "1", "name": "VIP"},
+    {"id": "z2", "hall_id": "1", "name": "Standard"},
+    {"id": "z3", "hall_id": "2", "name": "Front Row"},
+    {"id": "z4", "hall_id": "2", "name": "Balcony"},
+    {"id": "z5", "hall_id": "3", "name": "Fan Zone"},
+    {"id": "z6", "hall_id": "3", "name": "Seated"}
+  ],
+  "ticket_types": [
+    {"id": "t1", "event_id": "1", "zone_id": "z1", "title": "VIP Ticket", "refundable": true},
+    {"id": "t2", "event_id": "1", "zone_id": "z2", "title": "Standard Ticket", "refundable": false},
+    {"id": "t3", "event_id": "2", "zone_id": "z3", "title": "Front Row", "refundable": true},
+    {"id": "t4", "event_id": "2", "zone_id": "z4", "title": "Balcony", "refundable": false},
+    {"id": "t5", "event_id": "3", "zone_id": "z5", "title": "Fan Zone", "refundable": false},
+    {"id": "t6", "event_id": "3", "zone_id": "z6", "title": "Seated", "refundable": true}
+  ],
+  "prices": [
+    {"id": "p1", "ticket_type_id": "t1", "amount": 10000, "currency": "KZT"},
+    {"id": "p2", "ticket_type_id": "t2", "amount": 5000, "currency": "KZT"},
+    {"id": "p3", "ticket_type_id": "t3", "amount": 7000, "currency": "KZT"},
+    {"id": "p4", "ticket_type_id": "t4", "amount": 4000, "currency": "KZT"},
+    {"id": "p5", "ticket_type_id": "t5", "amount": 8000, "currency": "KZT"},
+    {"id": "p6", "ticket_type_id": "t6", "amount": 6000, "currency": "KZT"}
+  ],
+  "orders": []
+}
