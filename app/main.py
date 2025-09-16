@@ -20,7 +20,7 @@ def main():
     cart = ()
     cart = hold(cart, CartItem(id="1", ticket_type_id=ticket_types[0].id, qty=2))
     cart = hold(cart, CartItem(id="2", ticket_type_id=ticket_types[1].id, qty=1))
-    print("Корзина:", cart)
+    print("Cart:", cart)
 
     total = order_total(prices, cart)
     print("Общая сумма заказа:", total)
