@@ -23,7 +23,7 @@ class Zone:
     hall_id: str
     name: str
     parent_id: Optional[str] = None
-    seats: Optional[int] = None  # None для стоячих зон
+    seats: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -48,8 +48,8 @@ class TicketType:
 class Price:
     id: str
     ticket_type_id: str
-    amount: int  # в копейках/тийынах
-    currency: str
+    amount: int
+    currency: str = "KZT"
 
 
 @dataclass(frozen=True)
@@ -73,4 +73,35 @@ class Order:
     event_id: str
     items: Tuple[CartItem, ...]
     total: int
-    status: str  # held / paid / cancelled
+    status: str  # held/paid/cancelled
+
+
+@dataclass(frozen=True)
+class AdmissionGate:
+    id: str
+    hall_id: str
+    name: str
+
+
+@dataclass(frozen=True)
+class Scan:
+    id: str
+    order_id: str
+    gate_id: str
+    ts: str
+    ok: bool
+
+
+@dataclass(frozen=True)
+class EventMsg:
+    id: str
+    ts: str
+    name: str
+    payload: dict
+
+
+@dataclass(frozen=True)
+class Rule:
+    id: str
+    kind: str
+    payload: dict

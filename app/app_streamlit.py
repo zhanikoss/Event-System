@@ -1,54 +1,50 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import streamlit as st
-from core.transforms import load_seed, ticket_titles_upper, vip_tickets, discounted_prices, max_price
-from core.domain import CartItem
+from core.transforms import load_seed, ticket_titles_upper, vip_tickets, discounted_prices, max_price, average_price, available_quotas
 
-# путь к seed.json
 seed_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "seed.json"))
-venues, halls, events, zones, ticket_types, prices, orders = load_seed(seed_path)
+venues, halls, events, zones, ticket_types, prices, orders, quotas = load_seed(seed_path)
 
-st.title("Event System 🎟️")
+st.title("Event System - Lab 1")
 
-# Площадки
-st.header("Площадки")
-for venue in venues:
-    st.write(f"{venue.name}")
+# Overview — по требованиям лабы
+st.header("Overview")
+st.write(f"Venues: {len(venues)}")
+st.write(f"Events: {len(events)}") 
+st.write(f"Ticket types: {len(ticket_types)}")
+st.write(f"Average price: {average_price(prices):.0f} KZT")
+st.write(f"Available quotas: {len(available_quotas(quotas))}")
 
-# События
-st.header("События")
-for event in events:
-    st.write(f"{event.title}")
+# Functional Core 
+st.header("Ticket titles ")
+for title in ticket_titles_upper(ticket_types):
+    st.write(f"• {title}")
 
-# Билеты
-st.header("Ticket types with its original prices")
-for t in ticket_types:
-    price = next(p.amount for p in prices if p.ticket_type_id == t.id)
-    st.write(f"{t.title.upper()} — {price} тг")
+st.header("VIP tickets")
+vip_list = vip_tickets(ticket_types)
+if vip_list:
+    for ticket in vip_list:
+        st.write(f"• {ticket.title}")
+else:
+    st.write("No VIP tickets")
 
-# VIP билеты
-st.header("VIP билеты")
-for vip in vip_tickets(ticket_types):
-    st.write(vip.title)
+st.header("Discounted prices (10% off)")
+discounted = discounted_prices(prices)
+for i, price in enumerate(discounted, 1):
+    st.write(f"{i}. {price} KZT")
 
-# Скидочные цены
-st.header("Скидочные цены")
-st.write(discounted_prices(prices))
+st.header("Max price")
+st.write(f"{max_price(prices)} KZT")
 
-# Максимальная цена
-st.header("Максимальная цена")
-st.write(max_price(prices))
-
-# Простая корзина
-st.header("Корзина")
-cart = ()
-cart = cart + (CartItem(id="1", ticket_type_id=ticket_types[0].id, qty=2),)
-cart = cart + (CartItem(id="2", ticket_type_id=ticket_types[1].id, qty=1),)
-st.write(cart)
-
-def order_total(prices, cart):
-    return sum(next(p.amount for p in prices if p.ticket_type_id == c.ticket_type_id) * c.qty for c in cart)
-
-total = order_total(prices, cart)
-st.write(f"Общая сумма заказа: {total}")
+# Available quotas details
+st.header("Available Quotas Details")
+available = available_quotas(quotas)
+if available:
+    for quota in available:
+        ticket = next((t for t in ticket_types if t.id == quota["ticket_type_id"]), None)
+        if ticket:
+            st.write(f"• {ticket.title}: {quota['available']} available")
+else:
+    st.write("No available quotas")
