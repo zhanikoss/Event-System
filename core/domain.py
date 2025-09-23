@@ -74,34 +74,3 @@ class Order:
     items: Tuple[CartItem, ...]
     total: int
     status: str  # held/paid/cancelled
-
-
-@dataclass(frozen=True)
-class AdmissionGate:
-    id: str
-    hall_id: str
-    name: str
-
-
-@dataclass(frozen=True)
-class Scan:
-    id: str
-    order_id: str
-    gate_id: str
-    ts: str
-    ok: bool
-
-
-@dataclass(frozen=True)
-class EventMsg:
-    id: str
-    ts: str
-    name: str
-    payload: dict
-
-
-@dataclass(frozen=True)
-class Rule:
-    id: str
-    kind: str
-    payload: dict
