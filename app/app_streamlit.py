@@ -7,7 +7,7 @@ from core.transforms import load_seed, ticket_titles_upper, vip_tickets, discoun
 seed_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "seed.json"))
 venues, halls, events, zones, ticket_types, prices, orders, quotas = load_seed(seed_path)
 
-st.title("Event System - Lab 1")
+st.title("Event System")
 
 # Overview — по требованиям лабы
 st.header("Overview")

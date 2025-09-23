@@ -2,7 +2,6 @@ import json
 from functools import reduce
 from core.domain import Venue, Hall, Event, Zone, TicketType, Price, CartItem, Order, Quota
 
-
 def load_seed(path: str):
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
@@ -14,14 +13,11 @@ def load_seed(path: str):
     ticket_types = tuple(TicketType(**t) for t in data["ticket_types"])
     prices = tuple(Price(id=f"p{i+1}", **p) for i, p in enumerate(data["prices"]))
     
-    # Обрабатываем квоты если они есть
     quotas = tuple(Quota(**q) for q in data.get("quotas", []))
     
-    # Обрабатываем заказы
     orders_data = []
     for i, o in enumerate(data["orders"]):
         items = tuple(CartItem(id=f"ci{j+1}", **item) for j, item in enumerate(o["items"]))
-        # Временно считаем total
         total = sum(next((p.amount for p in prices if p.ticket_type_id == item["ticket_type_id"]), 0) * item["qty"] 
                    for item in o["items"])
         orders_data.append(Order(
@@ -35,19 +31,16 @@ def load_seed(path: str):
     
     return venues, halls, events, zones, ticket_types, prices, orders, quotas
 
-
 def hold(cart: tuple[CartItem, ...], item: CartItem) -> tuple[CartItem, ...]:
-    """Добавляет товар в корзину"""
+    """Add item to cart"""
     return cart + (item,)
 
-
 def release(cart: tuple[CartItem, ...], item_id: str) -> tuple[CartItem, ...]:
-    """Удаляет товар из корзины по ID"""
+    """Remove item from cart by ID"""
     return tuple(item for item in cart if item.id != item_id)
 
-
 def order_total(prices: tuple[Price, ...], items: tuple[CartItem, ...]) -> int:
-    """Считает общую сумму заказа"""
+    """Calculate total order amount (using reduce)"""
     return reduce(
         lambda acc, item: acc + next(
             p.amount for p in prices if p.ticket_type_id == item.ticket_type_id
@@ -56,9 +49,8 @@ def order_total(prices: tuple[Price, ...], items: tuple[CartItem, ...]) -> int:
         0
     )
 
-
 def order_total_with_discount(prices: tuple[Price, ...], items: tuple[CartItem, ...], discount_ids: tuple[str, ...]) -> int:
-    """Считает сумму со скидкой 20% для указанных ticket_type_id"""
+    """Calculate total with 20% discount for specified tickets"""
     total = 0
     for item in items:
         price = next(p.amount for p in prices if p.ticket_type_id == item.ticket_type_id)
@@ -68,33 +60,27 @@ def order_total_with_discount(prices: tuple[Price, ...], items: tuple[CartItem, 
             total += price * item.qty
     return total
 
-
 def ticket_titles_upper(tickets: tuple[TicketType, ...]) -> list[str]:
-    """Переводит названия билетов в верхний регистр"""
-    return [ticket.title.upper() for ticket in tickets]
-
+    """Convert ticket titles to uppercase (using map)"""
+    return list(map(lambda t: t.title.upper(), tickets))
 
 def vip_tickets(tickets: tuple[TicketType, ...]) -> list[TicketType]:
-    """Возвращает только VIP билеты"""
-    return [ticket for ticket in tickets if "VIP" in ticket.title.upper()]
-
+    """Return only VIP tickets (using filter)"""
+    return list(filter(lambda t: "VIP" in t.title.upper(), tickets))
 
 def discounted_prices(prices: tuple[Price, ...]) -> list[int]:
-    """Считает 90% от оригинальной цены"""
-    return [int(price.amount * 0.9) for price in prices]
-
+    """Calculate 90% of original price (using map)"""
+    return list(map(lambda p: int(p.amount * 0.9), prices))
 
 def max_price(prices: tuple[Price, ...]) -> int:
-    """Находит максимальную цену"""
-    return max(price.amount for price in prices) if prices else 0
-
+    """Find maximum price (using max)"""
+    return max(map(lambda p: p.amount, prices)) if prices else 0
 
 def average_price(prices: tuple[Price, ...]) -> float:
-    """Средняя цена"""
-    return sum(p.amount for p in prices) / len(prices) if prices else 0
-
+    """Calculate average price"""
+    return sum(map(lambda p: p.amount, prices)) / len(prices) if prices else 0
 
 def available_quotas(quotas: tuple[Quota, ...]) -> list[dict]:
-    """Доступные квоты"""
+    """Find available quotas"""
     return [{"ticket_type_id": q.ticket_type_id, "available": q.total - q.sold} 
             for q in quotas if q.total > q.sold]
