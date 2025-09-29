@@ -1,13 +1,18 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 
+@dataclass
+class User:
+    id: str
+    username: str
+    password: str
+    role: str  # "admin" or "user"
 
-@dataclass(frozen=True)
+@dataclass
 class Venue:
     id: str
     name: str
     city: str
-
 
 @dataclass(frozen=True)
 class Hall:
@@ -15,7 +20,6 @@ class Hall:
     venue_id: str
     name: str
     capacity: int
-
 
 @dataclass(frozen=True)
 class Zone:
@@ -25,7 +29,6 @@ class Zone:
     parent_id: Optional[str] = None
     seats: Optional[int] = None
 
-
 @dataclass(frozen=True)
 class Event:
     id: str
@@ -33,7 +36,6 @@ class Event:
     title: str
     start: str
     end: str
-
 
 @dataclass(frozen=True)
 class TicketType:
@@ -43,14 +45,12 @@ class TicketType:
     title: str
     refundable: bool
 
-
 @dataclass(frozen=True)
 class Price:
     id: str
     ticket_type_id: str
     amount: int
     currency: str = "KZT"
-
 
 @dataclass(frozen=True)
 class Quota:
@@ -59,13 +59,11 @@ class Quota:
     total: int
     sold: int
 
-
 @dataclass(frozen=True)
 class CartItem:
     id: str
     ticket_type_id: str
     qty: int
-
 
 @dataclass(frozen=True)
 class Order:
@@ -74,3 +72,30 @@ class Order:
     items: Tuple[CartItem, ...]
     total: int
     status: str  # held/paid/cancelled
+
+@dataclass(frozen=True)
+class AdmissionGate:
+    id: str
+    hall_id: str
+    name: str
+
+@dataclass(frozen=True)
+class Scan:
+    id: str
+    order_id: str
+    gate_id: str
+    ts: str
+    ok: bool
+
+@dataclass(frozen=True)
+class EventMsg:
+    id: str
+    ts: str
+    name: str  # SEARCH, HOLD, PURCHASED, CANCELLED, SCANNED, PRICE_CHANGED
+    payload: Dict[str, Any]
+
+@dataclass(frozen=True)
+class Rule:
+    id: str
+    kind: str  # age_limit, per_user_limit, hold_ttl, dynamic_pricing, refund_policy
+    payload: Dict[str, Any]

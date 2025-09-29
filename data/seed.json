@@ -1,4 +1,8 @@
 {
+  "users": [
+    {"id": "1", "username": "admin", "password": "admin123", "role": "admin"},
+    {"id": "2", "username": "user", "password": "user123", "role": "user"}
+  ],
   "venues": [
     {"id": "v1", "name": "Palace of Culture", "city": "Almaty"},
     {"id": "v2", "name": "Open Air Arena", "city": "Astana"},
@@ -36,16 +40,12 @@
     {"id": "t1", "event_id": "e1", "zone_id": "z1", "title": "VIP Concert", "refundable": true},
     {"id": "t2", "event_id": "e1", "zone_id": "z2", "title": "Standard Concert", "refundable": true},
     {"id": "t3", "event_id": "e1", "zone_id": "z3", "title": "Student Concert", "refundable": false},
-    
     {"id": "t4", "event_id": "e2", "zone_id": "z4", "title": "Jazz Premium", "refundable": true},
     {"id": "t5", "event_id": "e2", "zone_id": "z5", "title": "Jazz Regular", "refundable": true},
-    
     {"id": "t6", "event_id": "e3", "zone_id": "z6", "title": "Rock Festival Pass", "refundable": false},
     {"id": "t7", "event_id": "e3", "zone_id": "z7", "title": "Rock Backstage", "refundable": true},
-    
     {"id": "t8", "event_id": "e4", "zone_id": "z8", "title": "Theater Stall", "refundable": true},
     {"id": "t9", "event_id": "e4", "zone_id": "z9", "title": "Theater Balcony", "refundable": true},
-    
     {"id": "t10", "event_id": "e5", "zone_id": "z10", "title": "Comedy Show", "refundable": true},
     {"id": "t11", "event_id": "e6", "zone_id": "z6", "title": "Electronic Dance", "refundable": false},
     {"id": "t12", "event_id": "e6", "zone_id": "z7", "title": "Electronic VIP", "refundable": true}
@@ -65,7 +65,7 @@
     {"ticket_type_id": "t12", "amount": 18000}
   ],
   "quotas": [
-    {"id": "q1", "ticket_type_id": "t1", "total": 100, "sold": 20},
+{"id": "q1", "ticket_type_id": "t1", "total": 100, "sold": 20},
     {"id": "q2", "ticket_type_id": "t2", "total": 200, "sold": 50},
     {"id": "q3", "ticket_type_id": "t3", "total": 80, "sold": 15},
     {"id": "q4", "ticket_type_id": "t4", "total": 50, "sold": 10},
@@ -94,5 +94,27 @@
     {"id": "o13", "event_id": "e3", "items": [{"ticket_type_id": "t6", "qty": 3}], "status": "paid"},
     {"id": "o14", "event_id": "e4", "items": [{"ticket_type_id": "t8", "qty": 1}], "status": "paid"},
     {"id": "o15", "event_id": "e5", "items": [{"ticket_type_id": "t10", "qty": 2}], "status": "cancelled"}
+  ],
+  "admission_gates": [
+    {"id": "g1", "hall_id": "h1", "name": "Main Entrance"},
+    {"id": "g2", "hall_id": "h1", "name": "VIP Entrance"},
+    {"id": "g3", "hall_id": "h3", "name": "North Gate"},
+    {"id": "g4", "hall_id": "h3", "name": "South Gate"}
+  ],
+  "scans": [
+    {"id": "s1", "order_id": "o1", "gate_id": "g1", "ts": "2024-01-15T18:30:00", "ok": true},
+    {"id": "s2", "order_id": "o1", "gate_id": "g1", "ts": "2024-01-15T18:31:00", "ok": true},
+    {"id": "s3", "order_id": "o2", "gate_id": "g1", "ts": "2024-01-15T18:35:00", "ok": true}
+  ],
+  "event_msgs": [
+    {"id": "m1", "ts": "2024-01-01T10:00:00", "name": "SEARCH", "payload": {"query": "concert", "results": 5}},
+    {"id": "m2", "ts": "2024-01-01T10:05:00", "name": "HOLD", "payload": {"order_id": "o6", "duration": 900}},
+    {"id": "m3", "ts": "2024-01-01T10:10:00", "name": "PURCHASED", "payload": {"order_id": "o1", "amount": 38000}}
+  ],
+  "rules": [
+    {"id": "r1", "kind": "age_limit", "payload": {"min_age": 18, "event_id": "e3"}},
+    {"id": "r2", "kind": "per_user_limit", "payload": {"max_tickets": 4, "event_id": "e1"}},
+    {"id": "r3", "kind": "hold_ttl", "payload": {"minutes": 15}},
+    {"id": "r4", "kind": "refund_policy", "payload": {"days_before_event": 7, "fee_percent": 10}}
   ]
 }
