@@ -14,8 +14,8 @@ def test_city_filter_with_real_cities():
         Hall(id="h3", venue_id="v2", name="Summer Stage", capacity=5000),
     )
     events = (
-        Event(id="e1", hall_id="h1", title="Symphonic Concert", start="2024-01-15", end="2024-01-15"),
-        Event(id="e3", hall_id="h3", title="Rock Festival", start="2024-02-01", end="2024-02-03"),
+        Event(id="e1", hall_id="h1", title="Symphonic Concert", start="2025-01-15", end="2025-01-15"),
+        Event(id="e3", hall_id="h3", title="Rock Festival", start="2025-02-01", end="2025-02-03"),
     )
     
     result = by_city("Almaty")(events, venues, halls)

@@ -11,6 +11,7 @@ from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy
 import json
 from core.filters import by_city, by_date_range, by_price_range, compose_filters
 from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy, calculate_total_seats
+from core.memo import quote_tickets, benchmark_quotes
 
 # Настройка страницы
 st.set_page_config(
@@ -278,8 +279,8 @@ def advanced_search_page():
     with col1:
         st.subheader("📍 Location & Date")
         selected_city = st.selectbox("City", ["All Cities"] + list(set(v.city for v in st.session_state.venues)))
-        start_date = st.text_input("From Date", "2024-01-01")
-        end_date = st.text_input("To Date", "2024-12-31")
+        start_date = st.text_input("From Date", "2025-01-01")
+        end_date = st.text_input("To Date", "2025-12-31")
     
     with col2:
         st.subheader("💰 Budget & Preferences")
@@ -421,6 +422,35 @@ def venue_details_page():
                                 st.markdown(f"{indent}📌 {zone.name}{seats_info}", unsafe_allow_html=True)
                 
                 st.markdown("---")
+def reports_page():
+    st.markdown('<div class="section-header">📊 Reports - Cache Performance</div>', unsafe_allow_html=True)
+    
+    if not st.session_state.user or not is_admin(st.session_state.user):
+        st.error("🚫 Admin access required")
+        return
+    
+    st.write("**Quotes (cached)** - testing memoization performance")
+    
+    # Запускаем тест автоматически при загрузке страницы
+    with st.spinner("Running cache performance test..."):
+        time_no_cache, time_with_cache = benchmark_quotes(300)
+    
+    # Показываем результаты
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.metric("Time without cache", f"{time_no_cache:.0f} ms")
+    with col2:
+        st.metric("Time with cache", f"{time_with_cache:.0f} ms")
+    
+    # Простой график
+    st.write("**Performance comparison:**")
+    import pandas as pd
+    df = pd.DataFrame({
+        'Scenario': ['Without Cache', 'With Cache'],
+        'Time (ms)': [time_no_cache, time_with_cache]
+    })
+    st.bar_chart(df, x='Scenario', y='Time (ms)')
 
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
@@ -431,8 +461,11 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("## 🧭 Navigation")
 
 pages = ["🏠 Overview", "🎪 Events", "🎫 Tickets", "🎯 Advanced Search", "🏟️ Venue Details"]
+
+# Только админ видит Admin и Reports
 if st.session_state.user and is_admin(st.session_state.user):
     pages.append("👨‍💼 Admin")
+    pages.append("📊 Reports") 
 
 page = st.sidebar.radio("Go to:", pages, key="nav_radio")
 
@@ -444,7 +477,9 @@ elif "🎫" in page:
     tickets_page()
 elif "🎯" in page:
     advanced_search_page()
-elif "🏟️" in page:  
+elif "🏟️" in page:
     venue_details_page()
+elif "📊" in page: 
+    reports_page()
 elif "👨‍💼" in page:
     admin_page()

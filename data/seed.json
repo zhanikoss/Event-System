@@ -6,22 +6,28 @@
   "venues": [
     {"id": "v1", "name": "Palace of Culture", "city": "Almaty"},
     {"id": "v2", "name": "Open Air Arena", "city": "Astana"},
-    {"id": "v3", "name": "City Theater", "city": "Almaty"}
+    {"id": "v3", "name": "City Theater", "city": "Almaty"},
+    {"id": "v4", "name": "London O2 Arena", "city": "London"},
+    {"id": "v5", "name": "Sydney Opera House", "city": "Sydney"}
   ],
   "halls": [
     {"id": "h1", "venue_id": "v1", "name": "Main Hall", "capacity": 1000},
     {"id": "h2", "venue_id": "v1", "name": "Small Hall", "capacity": 200},
     {"id": "h3", "venue_id": "v2", "name": "Summer Stage", "capacity": 5000},
     {"id": "h4", "venue_id": "v3", "name": "Drama Stage", "capacity": 300},
-    {"id": "h5", "venue_id": "v3", "name": "Experimental Stage", "capacity": 100}
+    {"id": "h5", "venue_id": "v3", "name": "Experimental Stage", "capacity": 100},
+    {"id": "h6", "venue_id": "v4", "name": "Indigo at O2", "capacity": 2800},
+    {"id": "h7", "venue_id": "v5", "name": "Concert Hall", "capacity": 2679}
   ],
   "events": [
-    {"id": "e1", "hall_id": "h1", "title": "Symphonic Concert", "start": "2024-01-15", "end": "2024-01-15"},
-    {"id": "e2", "hall_id": "h2", "title": "Jazz Evening", "start": "2024-01-20", "end": "2024-01-20"},
-    {"id": "e3", "hall_id": "h3", "title": "Rock Festival", "start": "2024-02-01", "end": "2024-02-03"},
-    {"id": "e4", "hall_id": "h4", "title": "Drama Play", "start": "2024-01-25", "end": "2024-01-25"},
-    {"id": "e5", "hall_id": "h5", "title": "Stand-up Show", "start": "2024-02-10", "end": "2024-02-10"},
-    {"id": "e6", "hall_id": "h3", "title": "Electronic Night", "start": "2024-02-15", "end": "2024-02-15"}
+    {"id": "e1", "hall_id": "h1", "title": "Symphonic Concert", "start": "2025-01-15", "end": "2025-01-15"},
+    {"id": "e2", "hall_id": "h2", "title": "Jazz Evening", "start": "2025-01-20", "end": "2025-01-20"},
+    {"id": "e3", "hall_id": "h3", "title": "Rock Festival", "start": "2025-02-01", "end": "2025-02-03"},
+    {"id": "e4", "hall_id": "h4", "title": "Drama Play", "start": "2025-01-25", "end": "2025-01-25"},
+    {"id": "e5", "hall_id": "h5", "title": "Stand-up Show", "start": "2025-02-10", "end": "2025-02-10"},
+    {"id": "e6", "hall_id": "h3", "title": "Electronic Night", "start": "2025-02-15", "end": "2025-02-15"},
+    {"id": "e7", "hall_id": "h6", "title": "London Rock Concert", "start": "2025-03-10", "end": "2025-03-10"},
+    {"id": "e8", "hall_id": "h7", "title": "Sydney Symphony", "start": "2025-03-20", "end": "2025-03-20"}
   ],
   "zones": [
     {"id": "z1", "hall_id": "h1", "name": "Parterre", "seats": 500},
@@ -34,7 +40,11 @@
     {"id": "z8", "hall_id": "h4", "name": "Stalls", "seats": 200},
     {"id": "z9", "hall_id": "h4", "name": "Balcony", "seats": 100},
     {"id": "z10", "hall_id": "h5", "name": "Floor", "seats": 80},
-    {"id": "z11", "hall_id": "h5", "name": "VIP Tables", "seats": 20}
+    {"id": "z11", "hall_id": "h5", "name": "VIP Tables", "seats": 20},
+    {"id": "z12", "hall_id": "h6", "name": "Standing Area", "seats": null},
+    {"id": "z13", "hall_id": "h6", "name": "Seated Area", "seats": 1500},
+    {"id": "z14", "hall_id": "h7", "name": "Stalls", "seats": 1500},
+    {"id": "z15", "hall_id": "h7", "name": "Balcony", "seats": 1179}
   ],
   "ticket_types": [
     {"id": "t1", "event_id": "e1", "zone_id": "z1", "title": "VIP Concert", "refundable": true},
@@ -48,7 +58,11 @@
     {"id": "t9", "event_id": "e4", "zone_id": "z9", "title": "Theater Balcony", "refundable": true},
     {"id": "t10", "event_id": "e5", "zone_id": "z10", "title": "Comedy Show", "refundable": true},
     {"id": "t11", "event_id": "e6", "zone_id": "z6", "title": "Electronic Dance", "refundable": false},
-    {"id": "t12", "event_id": "e6", "zone_id": "z7", "title": "Electronic VIP", "refundable": true}
+    {"id": "t12", "event_id": "e6", "zone_id": "z7", "title": "Electronic VIP", "refundable": true},
+    {"id": "t13", "event_id": "e7", "zone_id": "z12", "title": "London Standing", "refundable": false},
+    {"id": "t14", "event_id": "e7", "zone_id": "z13", "title": "London Seated", "refundable": true},
+    {"id": "t15", "event_id": "e8", "zone_id": "z14", "title": "Sydney Stalls", "refundable": true},
+    {"id": "t16", "event_id": "e8", "zone_id": "z15", "title": "Sydney Balcony", "refundable": true}
   ],
   "prices": [
     {"ticket_type_id": "t1", "amount": 15000},
@@ -62,10 +76,14 @@
     {"ticket_type_id": "t9", "amount": 5000},
     {"ticket_type_id": "t10", "amount": 4000},
     {"ticket_type_id": "t11", "amount": 8000},
-    {"ticket_type_id": "t12", "amount": 18000}
+    {"ticket_type_id": "t12", "amount": 18000},
+    {"ticket_type_id": "t13", "amount": 12000},
+    {"ticket_type_id": "t14", "amount": 20000},
+    {"ticket_type_id": "t15", "amount": 25000},
+    {"ticket_type_id": "t16", "amount": 18000}
   ],
   "quotas": [
-{"id": "q1", "ticket_type_id": "t1", "total": 100, "sold": 20},
+    {"id": "q1", "ticket_type_id": "t1", "total": 100, "sold": 20},
     {"id": "q2", "ticket_type_id": "t2", "total": 200, "sold": 50},
     {"id": "q3", "ticket_type_id": "t3", "total": 80, "sold": 15},
     {"id": "q4", "ticket_type_id": "t4", "total": 50, "sold": 10},
@@ -76,7 +94,11 @@
     {"id": "q9", "ticket_type_id": "t9", "total": 100, "sold": 25},
     {"id": "q10", "ticket_type_id": "t10", "total": 80, "sold": 20},
     {"id": "q11", "ticket_type_id": "t11", "total": 200, "sold": 80},
-    {"id": "q12", "ticket_type_id": "t12", "total": 60, "sold": 15}
+    {"id": "q12", "ticket_type_id": "t12", "total": 60, "sold": 15},
+    {"id": "q13", "ticket_type_id": "t13", "total": 500, "sold": 200},
+    {"id": "q14", "ticket_type_id": "t14", "total": 300, "sold": 100},
+    {"id": "q15", "ticket_type_id": "t15", "total": 400, "sold": 150},
+    {"id": "q16", "ticket_type_id": "t16", "total": 300, "sold": 120}
   ],
   "orders": [
     {"id": "o1", "event_id": "e1", "items": [{"ticket_type_id": "t1", "qty": 2}, {"ticket_type_id": "t2", "qty": 1}], "status": "paid"},
@@ -89,32 +111,36 @@
     {"id": "o8", "event_id": "e5", "items": [{"ticket_type_id": "t10", "qty": 2}], "status": "paid"},
     {"id": "o9", "event_id": "e6", "items": [{"ticket_type_id": "t11", "qty": 2}], "status": "held"},
     {"id": "o10", "event_id": "e6", "items": [{"ticket_type_id": "t12", "qty": 1}], "status": "paid"},
-    {"id": "o11", "event_id": "e1", "items": [{"ticket_type_id": "t2", "qty": 4}], "status": "paid"},
-    {"id": "o12", "event_id": "e2", "items": [{"ticket_type_id": "t5", "qty": 2}], "status": "held"},
-    {"id": "o13", "event_id": "e3", "items": [{"ticket_type_id": "t6", "qty": 3}], "status": "paid"},
-    {"id": "o14", "event_id": "e4", "items": [{"ticket_type_id": "t8", "qty": 1}], "status": "paid"},
-    {"id": "o15", "event_id": "e5", "items": [{"ticket_type_id": "t10", "qty": 2}], "status": "cancelled"}
+    {"id": "o11", "event_id": "e7", "items": [{"ticket_type_id": "t13", "qty": 3}], "status": "paid"},
+    {"id": "o12", "event_id": "e8", "items": [{"ticket_type_id": "t15", "qty": 2}], "status": "paid"}
   ],
   "admission_gates": [
     {"id": "g1", "hall_id": "h1", "name": "Main Entrance"},
     {"id": "g2", "hall_id": "h1", "name": "VIP Entrance"},
     {"id": "g3", "hall_id": "h3", "name": "North Gate"},
-    {"id": "g4", "hall_id": "h3", "name": "South Gate"}
+    {"id": "g4", "hall_id": "h3", "name": "South Gate"},
+    {"id": "g5", "hall_id": "h6", "name": "O2 Main Gate"},
+    {"id": "g6", "hall_id": "h7", "name": "Opera House Entrance"}
   ],
   "scans": [
-    {"id": "s1", "order_id": "o1", "gate_id": "g1", "ts": "2024-01-15T18:30:00", "ok": true},
-    {"id": "s2", "order_id": "o1", "gate_id": "g1", "ts": "2024-01-15T18:31:00", "ok": true},
-    {"id": "s3", "order_id": "o2", "gate_id": "g1", "ts": "2024-01-15T18:35:00", "ok": true}
+    {"id": "s1", "order_id": "o1", "gate_id": "g1", "ts": "2025-01-15T18:30:00", "ok": true},
+    {"id": "s2", "order_id": "o1", "gate_id": "g1", "ts": "2025-01-15T18:31:00", "ok": true},
+    {"id": "s3", "order_id": "o2", "gate_id": "g1", "ts": "2025-01-15T18:35:00", "ok": true},
+    {"id": "s4", "order_id": "o11", "gate_id": "g5", "ts": "2025-03-10T19:00:00", "ok": true},
+    {"id": "s5", "order_id": "o12", "gate_id": "g6", "ts": "2025-03-20T20:15:00", "ok": true}
   ],
   "event_msgs": [
-    {"id": "m1", "ts": "2024-01-01T10:00:00", "name": "SEARCH", "payload": {"query": "concert", "results": 5}},
-    {"id": "m2", "ts": "2024-01-01T10:05:00", "name": "HOLD", "payload": {"order_id": "o6", "duration": 900}},
-    {"id": "m3", "ts": "2024-01-01T10:10:00", "name": "PURCHASED", "payload": {"order_id": "o1", "amount": 38000}}
+    {"id": "m1", "ts": "2025-01-01T10:00:00", "name": "SEARCH", "payload": {"query": "concert", "results": 5}},
+    {"id": "m2", "ts": "2025-01-01T10:05:00", "name": "HOLD", "payload": {"order_id": "o6", "duration": 900}},
+    {"id": "m3", "ts": "2025-01-01T10:10:00", "name": "PURCHASED", "payload": {"order_id": "o1", "amount": 38000}},
+    {"id": "m4", "ts": "2025-03-01T09:00:00", "name": "SEARCH", "payload": {"query": "london", "results": 1}},
+    {"id": "m5", "ts": "2025-03-15T11:00:00", "name": "SEARCH", "payload": {"query": "sydney", "results": 1}}
   ],
   "rules": [
     {"id": "r1", "kind": "age_limit", "payload": {"min_age": 18, "event_id": "e3"}},
     {"id": "r2", "kind": "per_user_limit", "payload": {"max_tickets": 4, "event_id": "e1"}},
     {"id": "r3", "kind": "hold_ttl", "payload": {"minutes": 15}},
-    {"id": "r4", "kind": "refund_policy", "payload": {"days_before_event": 7, "fee_percent": 10}}
+    {"id": "r4", "kind": "refund_policy", "payload": {"days_before_event": 7, "fee_percent": 10}},
+    {"id": "r5", "kind": "dynamic_pricing", "payload": {"ticket_type_id": "t1", "demand_threshold": 0.7}}
   ]
 }

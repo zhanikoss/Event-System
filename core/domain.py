@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from typing import Optional, Tuple, List, Dict, Any
 
@@ -97,5 +98,13 @@ class EventMsg:
 @dataclass(frozen=True)
 class Rule:
     id: str
-    kind: str  # age_limit, per_user_limit, hold_ttl, dynamic_pricing, refund_policy
-    payload: Dict[str, Any]
+    kind: str  
+    payload: str = "{}"  
+    
+    @property
+    def payload_dict(self) -> Dict[str, Any]:
+        return json.loads(self.payload) if self.payload else {}
+    
+    @classmethod
+    def create(cls, id: str, kind: str, payload_dict: Dict[str, Any]):
+        return cls(id=id, kind=kind, payload=json.dumps(payload_dict, sort_keys=True))
