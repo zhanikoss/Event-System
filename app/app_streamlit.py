@@ -9,78 +9,16 @@ from core.domain import Venue, CartItem
 
 # Настройка страницы
 st.set_page_config(
-    page_title="🎭 Event Management System", 
-    page_icon="🎭",
+    page_title= "Event Management System", 
+    page_icon="🎫",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Красивый CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 3rem;
-        background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-bottom: 2rem;
-        font-weight: bold;
-    }
-    .section-header {
-        font-size: 2rem;
-        color: #2c3e50;
-        border-bottom: 3px solid #3498db;
-        padding-bottom: 0.5rem;
-        margin: 2rem 0 1rem 0;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 15px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .event-card {
-        background: white;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border-left: 5px solid #FF6B6B;
-    }
-    .ticket-card {
-        background: #f8f9fa;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 10px;
-        border: 1px solid #dee2e6;
-    }
-    .admin-card {
-        background: #fff3cd;
-        padding: 1rem;
-        border-radius: 10px;
-        border: 2px solid #ffeaa7;
-        margin: 0.5rem 0;
-    }
-    .cart-item {
-        background: #e8f4fd;
-        padding: 0.8rem;
-        margin: 0.5rem 0;
-        border-radius: 8px;
-        border-left: 4px solid #3498db;
-    }
-    .stButton button {
-        background-color: #3498db;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        font-weight: bold;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Подключаем CSS-файл
+with open(os.path.join(os.path.dirname(__file__), "style.css")) as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 
 # Загрузка данных
 if 'data_loaded' not in st.session_state:
