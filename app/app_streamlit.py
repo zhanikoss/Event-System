@@ -3,9 +3,14 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.transforms import load_seed, average_price, get_ticket_price
+from core.transforms import load_seed, average_price, get_ticket_display_name, get_ticket_price
 from core.auth import authenticate_user, is_admin
 from core.domain import Venue, CartItem
+from core.filters import by_city, by_date_range, by_price_range, compose_filters
+from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy, calculate_total_seats
+import json
+from core.filters import by_city, by_date_range, by_price_range, compose_filters
+from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy, calculate_total_seats
 
 # Настройка страницы
 st.set_page_config(
@@ -104,7 +109,7 @@ def cart_section():
                 st.sidebar.markdown('</div>', unsafe_allow_html=True)
                 
                 # Кнопка удаления
-                if st.sidebar.button(f"🗑️ Remove", key=f"cart_remove_{i}"):
+                if st.sidebar.button(f"🗑 Remove", key=f"cart_remove_{i}"):
                     st.session_state.cart.pop(i)
                     st.rerun()
                 
@@ -135,7 +140,7 @@ def overview_page():
     
     with overview_col1:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("🏛️ Venues", len(st.session_state.venues))
+        st.metric("🏛 Venues", len(st.session_state.venues))
         st.markdown('</div>', unsafe_allow_html=True)
     
     with overview_col2:
@@ -165,7 +170,7 @@ def events_page():
         <div class="event-card">
             <h3>🎭 {event.title}</h3>
             <p>📅 <strong>Date:</strong> {event.start} to {event.end}</p>
-            <p>🏟️ <strong>Venue:</strong> {venue.
+            <p>🏟 <strong>Venue:</strong> {venue.
 name if venue else 'Unknown'} | 📍 {venue.city if venue else 'Unknown'}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -255,14 +260,167 @@ def admin_page():
                 with venue_col1:
                     st.markdown(f"""
                     <div class="admin-card">
-                        <strong>🏛️ {venue.name}</strong><br>
+                        <strong>🏛 {venue.name}</strong><br>
                         📍 {venue.city} | 🆔 {venue.id}
 </div>
                     """, unsafe_allow_html=True)
                 with venue_col2:
-                    if st.button("🗑️ Delete", key=f"admin_del_venue_{i}"):
+                    if st.button("🗑 Delete", key=f"admin_del_venue_{i}"):
                         st.session_state.venues.pop(i)
                         st.rerun()
+def advanced_search_page():
+    st.markdown('<div class="section-header">🎯 Advanced Search</div>', unsafe_allow_html=True)
+    st.write("Find exactly what you're looking for with our smart filters!")
+    
+    # Фильтры в колонках
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📍 Location & Date")
+        selected_city = st.selectbox("City", ["All Cities"] + list(set(v.city for v in st.session_state.venues)))
+        start_date = st.text_input("From Date", "2024-01-01")
+        end_date = st.text_input("To Date", "2024-12-31")
+    
+    with col2:
+        st.subheader("💰 Budget & Preferences")
+        min_price, max_price = st.slider("Price Range (₸)", 0, 50000, (0, 20000), 1000)
+        show_refundable = st.checkbox("Show only refundable tickets", value=False)
+    
+    # Кнопка поиска
+    if st.button("🔍 Search with Smart Filters", type="primary"):
+        
+        # ПРИМЕНЯЕМ ФИЛЬТРЫ С ЛЯМБДАМИ
+        filtered_events = list(st.session_state.events)
+        
+        if selected_city != "All Cities":
+            # ИСПОЛЬЗУЕМ ЗАМЫКАНИЕ С ЛЯМБДАМИ
+            city_filter = by_city(selected_city)
+            filtered_events = city_filter(
+                tuple(st.session_state.events), 
+                tuple(st.session_state.venues), 
+                tuple(st.session_state.halls)
+            )
+        
+        # Фильтр по дате
+        date_filter = by_date_range(start_date, end_date)
+        filtered_events = date_filter(tuple(filtered_events))
+        
+        # Фильтр по цене
+        event_ids = [e.id for e in filtered_events]
+        event_tickets = [t for t in st.session_state.ticket_types if t.event_id in event_ids]
+        price_filter = by_price_range(min_price, max_price)
+        filtered_tickets = price_filter(tuple(event_tickets), tuple(st.session_state.prices))
+        
+        # Дополнительные фильтры
+        if show_refundable:
+            filtered_tickets = [t for t in filtered_tickets if t.refundable]
+        
+        # Результаты
+        if filtered_tickets:
+            st.success(f"🎉 Found {len(filtered_tickets)} matching tickets!")
+            
+            for ticket in filtered_tickets:
+                event = next((e for e in filtered_events if e.id == ticket.event_id), None)
+                venue = next((v for v in st.session_state.venues 
+                            if v.id == next((h.venue_id for h in st.session_state.halls 
+                                           if h.id == event.hall_id), None)), None) if event else None
+                price = get_ticket_price(ticket.id, st.session_state.prices)
+                zone = next((z for z in st.session_state.zones if z.id == ticket.zone_id), None)
+                
+                # Показываем структуру зала с помощью РЕКУРСИИ
+                if venue and zone:
+                    venue_halls = [h for h in st.session_state.halls if h.venue_id == venue.id]
+                    for hall in venue_halls:
+                        hall_zones = [z for z in st.session_state.zones if z.hall_id == hall.id]
+                        
+                        # РЕКУРСИЯ: получаем иерархию зон
+                        zone_hierarchy = get_zone_hierarchy(tuple(hall_zones), zone.id)
+                        
+                        if zone_hierarchy:
+                            with st.expander(f"🏟️ {ticket.title} - Seating Details"):
+                                st.write(f"**Venue:** {venue.name}, {venue.city}")
+                                st.write(f"**Zone:** {zone.name}")
+                                
+                                # РЕКУРСИЯ: показываем путь к зоне
+                                st.write("**Location in venue:**")
+                                for z, level in zone_hierarchy:
+                                    indent = "&nbsp;" * (level * 4)
+                                    st.markdown(f"{indent}📌 {z.name}", unsafe_allow_html=True)
+                
+                # Информация о билете
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.write(f"**{ticket.title}**")
+                    st.write(f"🎭 {event.title if event else ''} | 📍 {venue.city if venue else ''}")
+                    st.write(f"💰 {price:,} ₸ | 🔄 {'Refundable' if ticket.refundable else 'Non-refundable'}")
+                
+                with col2:
+                    if st.session_state.user:
+                        if st.button("🛒 Add to Cart", key=f"adv_{ticket.id}"):
+                            cart_item = CartItem(
+                                id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
+                                ticket_type_id=ticket.id,
+                                qty=1
+                            )
+                            st.session_state.cart.append(cart_item)
+                            st.success("Added to cart!")
+                            st.rerun()
+                    else:
+                        st.info("Login to buy")
+                
+                st.markdown("---")
+        else:
+            st.warning("😔 No tickets found matching your criteria")
+def venue_details_page():
+    st.markdown('<div class="section-header">🏟️ Venue Details</div>', unsafe_allow_html=True)
+    
+    if not st.session_state.venues:
+        st.info("No venues available")
+        return
+    
+    # Выбор площадки
+    venue_options = [f"{v.name} ({v.city})" for v in st.session_state.venues]
+    selected_venue = st.selectbox("Select Venue", venue_options)
+    
+    if selected_venue:
+        venue_name = selected_venue.split(" (")[0]
+        venue = next((v for v in st.session_state.venues if v.name == venue_name), None)
+        
+        if venue:
+            st.header(venue.name)
+            st.write(f"📍 {venue.city}")
+            
+            # Находим залы этой площадки
+            venue_halls = [h for h in st.session_state.halls if h.venue_id == venue.id]
+            
+            for hall in venue_halls:
+                st.subheader(f"🎪 {hall.name}")
+                st.write(f"Capacity: {hall.capacity} people")
+                
+                # ИСПОЛЬЗУЕМ РЕКУРСИЮ - получаем зоны этого зала
+                hall_zones = [z for z in st.session_state.zones if z.hall_id == hall.id]
+                
+                if hall_zones:
+                    # Находим корневые зоны (без parent_id)
+                    root_zones = [z for z in hall_zones if z.parent_id is None]
+                    
+                    for root_zone in root_zones:
+                        with st.expander(f"📋 {root_zone.name} - Seating Structure"):
+                            # РЕКУРСИЯ: получаем иерархию зон
+                            zone_hierarchy = get_zone_hierarchy(tuple(hall_zones), root_zone.id)
+                            
+                            # РЕКУРСИЯ: подсчитываем общее количество мест
+                            total_seats = calculate_total_seats(tuple(hall_zones), root_zone.id)
+                            
+                            st.write(f"**Total seats:** {total_seats}")
+                            st.write("**Zone hierarchy:**")
+                            
+                            for zone, level in zone_hierarchy:
+                                indent = "&nbsp;" * (level * 4)
+                                seats_info = f" - {zone.seats} seats" if zone.seats else " - Standing area"
+                                st.markdown(f"{indent}📌 {zone.name}{seats_info}", unsafe_allow_html=True)
+                
+                st.markdown("---")
 
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
@@ -272,19 +430,21 @@ cart_section()
 st.sidebar.markdown("---")
 st.sidebar.markdown("## 🧭 Navigation")
 
-# Определяем доступные страницы
-pages = ["🏠 Overview", "🎪 Events", "🎫 Tickets"]
+pages = ["🏠 Overview", "🎪 Events", "🎫 Tickets", "🎯 Advanced Search", "🏟️ Venue Details"]
 if st.session_state.user and is_admin(st.session_state.user):
     pages.append("👨‍💼 Admin")
 
 page = st.sidebar.radio("Go to:", pages, key="nav_radio")
 
-# Определяем какая страница выбрана
 if "🏠" in page:
     overview_page()
 elif "🎪" in page:
     events_page()
 elif "🎫" in page:
     tickets_page()
+elif "🎯" in page:
+    advanced_search_page()
+elif "🏟️" in page:  
+    venue_details_page()
 elif "👨‍💼" in page:
     admin_page()
