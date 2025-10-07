@@ -431,26 +431,36 @@ def reports_page():
     
     st.write("**Quotes (cached)** - testing memoization performance")
     
-    # Запускаем тест автоматически при загрузке страницы
-    with st.spinner("Running cache performance test..."):
-        time_no_cache, time_with_cache = benchmark_quotes(300)
-    
-    # Показываем результаты
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Time without cache", f"{time_no_cache:.0f} ms")
-    with col2:
-        st.metric("Time with cache", f"{time_with_cache:.0f} ms")
-    
-    # Простой график
-    st.write("**Performance comparison:**")
-    import pandas as pd
-    df = pd.DataFrame({
-        'Scenario': ['Without Cache', 'With Cache'],
-        'Time (ms)': [time_no_cache, time_with_cache]
-    })
-    st.bar_chart(df, x='Scenario', y='Time (ms)')
+    # ADD THIS BUTTON
+    if st.button("🚀 Run Cache Performance Test", type="primary"):
+        with st.spinner("Running performance test..."):
+            time_no_cache, time_with_cache = benchmark_quotes(300)
+        
+        # Show results
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Time without cache", f"{time_no_cache:.0f} ms")
+        with col2:
+            st.metric("Time with cache", f"{time_with_cache:.0f} ms")
+        with col3:
+            speedup = time_no_cache / time_with_cache if time_with_cache > 0 else 0
+            st.metric("Speed Improvement", f"{speedup:.1f}x")
+        
+        # Chart
+        st.write("**Performance comparison:**")
+        chart_data = {
+            'Scenario': ['Without Cache', 'With Cache'],
+            'Time (ms)': [time_no_cache, time_with_cache]
+        }
+        st.bar_chart(chart_data, x='Scenario', y='Time (ms)')
+        
+        # Cache info
+        cache_info = quote_tickets.cache_info()
+        st.write("**Cache Statistics:**")
+        st.write(f"- Hits: {cache_info.hits} ")
+        st.write(f"- Misses: {cache_info.misses} ")
+        st.write(f"- Cache Size: {cache_info.currsize}/{cache_info.maxsize} ")
 
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")

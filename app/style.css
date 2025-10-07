@@ -1,100 +1,169 @@
-/* === Основные стили === */
+body, [data-testid="stAppViewContainer"] {
+    background-color: #FFE0F5 !important;
+    font-family: 'Outfit', sans-serif !important;
+    color: #2c2c2c !important;
+}
+
+/* === Main Header === */
 .main-header {
-    font-family: 'Outfit', sans-serif;
     font-size: 3rem;
-    background: linear-gradient(45deg, #FF9CED, #87FFBD);
+    font-weight: 700;
+    text-align: center;
+    background: linear-gradient(45deg, #D00072, #FD1A95, #FB0FDE);
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-align: center;
-    margin-bottom: 2rem;
-    font-weight: bold;
+    margin-bottom: 2.5rem;
+    letter-spacing: 1px;
 }
 
+/* === Section Headers === */
 .section-header {
-    font-size: 2rem;
-    color: #2c3e50;
-    border-bottom: 3px solid #3498db;
-    padding-bottom: 0.5rem;
-    margin: 2rem 0 1rem 0;
+    font-size: 1.8rem;
+    color: #FD1A95;
+    border-bottom: 3px solid #FB0FDE;
+    padding-bottom: 0.4rem;
+    margin: 2rem 0 1.2rem 0;
+    font-weight: 600;
 }
 
+/* === Metric Cards === */
 .metric-card {
-    background: linear-gradient(135deg, #FF9CED 0%, #87FFBD 100%);
+    background: linear-gradient(135deg, #FD78EA, #FFE0F5);
+    color: #4b0044;
     padding: 1.5rem;
-    border-radius: 15px;
-    color: white;
+    border-radius: 18px;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 10px rgba(208, 0, 114, 0.25);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(253, 26, 149, 0.3);
+}
+
+/* === Event Cards === */
 .event-card {
-    background: white;
-    padding: 1.5rem;
-    margin: 1rem 0;
-    border-radius: 15px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    border-left: 5px solid #FF6B6B;
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem 1.8rem;
+    box-shadow: 0 4px 10px rgba(251, 15, 222, 0.15);
+    border-left: 6px solid #FD1A95;
+    margin: 1.2rem 0;
+    transition: all 0.3s ease;
 }
 
+.event-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 14px rgba(251, 15, 222, 0.25);
+}
+
+/* === Ticket Cards === */
 .ticket-card {
-    background: #f8f9fa;
-    padding: 1rem;
-    margin: 0.5rem 0;
-    border-radius: 10px;
-    border: 1px solid #dee2e6;
+    background: #FFE0F5;
+    border: 1px solid #FD78EA;
+    border-radius: 14px;
+    padding: 1.2rem 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 10px rgba(253, 26, 149, 0.2);
 }
 
+/* === Admin Cards === */
 .admin-card {
-    background: #fff3cd;
-    padding: 1rem;
-    border-radius: 10px;
-    border: 2px solid #ffeaa7;
-    margin: 0.5rem 0;
+    background: linear-gradient(135deg, #FD78EA, #FFE0F5);
+    border: 2px solid #FB0FDE;
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    box-shadow: 0 4px 8px rgba(253, 26, 149, 0.25);
+    color: #4b0044;
 }
 
+/* === Cart Items === */
 .cart-item {
-    background: #e8f4fd;
+    background: #FFE0F5;
     padding: 0.8rem;
     margin: 0.5rem 0;
-    border-radius: 8px;
-    border-left: 4px solid #3498db;
+    border-radius: 10px;
+    border-left: 5px solid #FD1A95;
+    box-shadow: 0 2px 5px rgba(253, 26, 149, 0.15);
 }
 
+/* === Buttons (Streamlit style override) === */
 .stButton button {
-    background-color: #3498db;
-    color: white;
+    background: linear-gradient(90deg, #D00072, #FD1A95, #FB0FDE);
+    color: white !important;
     border: none;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    font-weight: bold;
+    border-radius: 10px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease-in-out;
 }
 
-/* === Автоматическая поддержка темной темы === */
+.stButton button:hover {
+    background: linear-gradient(90deg, #FD1A95, #FB0FDE, #FD78EA);
+    transform: scale(1.05);
+}
+
+/* === Sidebar === */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #FFE0F5 0%, #FD78EA 100%) !important;
+    color: #3b0032 !important;
+    box-shadow: 4px 0 12px rgba(251, 15, 222, 0.2);
+}
+
+.stSidebar .stButton button {
+    background: linear-gradient(90deg, #D00072, #FD1A95);
+    color: white !important;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.stSidebar .stButton button:hover {
+    background: linear-gradient(90deg, #FD1A95, #FB0FDE);
+}
+
+/* === Scrollbar Styling === */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #FD1A95;
+    border-radius: 10px;
+}
+
+/* === Dark Mode === */
 @media (prefers-color-scheme: dark) {
-    .event-card, .ticket-card, .admin-card, .metric-card {
-        background: #17202c !important;
+    body, [data-testid="stAppViewContainer"] {
+        background-color: #1a101a !important;
         color: #f2f2f2 !important;
-        border-color: #405064 !important;
     }
 
     .main-header {
-        background: #FF9CED;
-        background-clip: text;
+        background: linear-gradient(45deg, #FD1A95, #FB0FDE);
         -webkit-text-fill-color: transparent;
     }
 
     .section-header {
-        color: #e0e0e0;
-        border-bottom-color: #5946d5;
+        color: #FD78EA;
+        border-bottom-color: #FD1A95;
     }
 
-    body, [data-testid="stAppViewContainer"] {
-        background-color: #0b121e !important;
+    .metric-card, .event-card, .ticket-card, .admin-card {
+        background: #241324 !important;
+        border-color: #FD78EA !important;
         color: #f2f2f2 !important;
+        box-shadow: 0 4px 10px rgba(253, 26, 149, 0.2);
     }
 
     .stButton button {
-        background-color: #5946d5 !important;
-        color: #ffff !important;
+        background: linear-gradient(90deg, #D00072, #FB0FDE) !important;
+        color: #fff !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        background: #1e1420 !important;
+        box-shadow: none;
     }
 }
