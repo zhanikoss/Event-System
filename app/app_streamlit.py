@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.transforms import load_seed, average_price, get_ticket_display_name, get_ticket_price
+from core.transforms import load_seed, average_price, get_ticket_display_name, get_ticket_price, validate_order
 from core.auth import authenticate_user, is_admin
 from core.domain import Venue, CartItem
 from core.filters import by_city, by_date_range, by_price_range, compose_filters
@@ -12,6 +12,7 @@ import json
 from core.filters import by_city, by_date_range, by_price_range, compose_filters
 from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy, calculate_total_seats
 from core.memo import quote_tickets, benchmark_quotes
+from core.compose import create_order_pipeline
 
 # Настройка страницы
 st.set_page_config(
@@ -96,73 +97,114 @@ def login_section():
 
 # Корзина - ИСПРАВЛЕННАЯ ВЕРСИЯ
 def cart_section():
+    """🛒 Отображает корзину, подсчёт суммы и оформление заказа"""
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🛒 Shopping Cart")
+
     if st.session_state.user and st.session_state.cart:
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 🛒 Shopping Cart")
-        
         total = 0
+
         for i, item in enumerate(st.session_state.cart):
             try:
-                # Безопасное получение цены
                 price = get_ticket_price(item.ticket_type_id, st.session_state.prices)
                 display_name = get_ticket_display_name_safe(item.ticket_type_id)
-                
+
                 st.sidebar.markdown(f'<div class="cart-item">', unsafe_allow_html=True)
-                st.sidebar.write(f"**{display_name}**")
+                st.sidebar.write(f"🎟 {display_name}")
                 st.sidebar.write(f"Qty: {item.qty} × {price:,} ₸")
                 st.sidebar.markdown('</div>', unsafe_allow_html=True)
-                
+
                 # Кнопка удаления
                 if st.sidebar.button(f"🗑 Remove", key=f"cart_remove_{i}"):
                     st.session_state.cart.pop(i)
                     st.rerun()
-                
+
                 total += item.qty * price
                 st.sidebar.markdown("---")
-                
+
             except Exception as e:
-                st.sidebar.error(f"Error with item {i}")
+                st.sidebar.error(f"Error with item {i}: {e}")
                 continue
-        
+
         if total > 0:
-            st.sidebar.markdown(f"**💰 Total: {total:,} ₸**")
+            st.sidebar.markdown(f"💰 Total: {total:,} ₸")
+
+            # 🔹 Поле возраста появляется только при наличии товаров
+            user_age = st.sidebar.number_input("🎂 Your age", min_value=0, max_value=120, step=1)
+
+            # 🔹 Кнопка оформления
             if st.sidebar.button("💳 Checkout", key="checkout_btn", use_container_width=True):
-                st.sidebar.success("🎉 Order placed successfully!")
-                st.session_state.cart = []
-                st.rerun()
-    elif st.session_state.user:
-        st.sidebar.markdown("---")
+                from core.compose import create_order_pipeline
+
+                with st.spinner("Processing your order..."):
+                    result = create_order_pipeline(
+                        tuple(st.session_state.cart),
+                        tuple(st.session_state.ticket_types),
+                        tuple(st.session_state.quotas),
+                        tuple(st.session_state.rules),
+                        tuple(st.session_state.prices),
+                    )
+
+                # --- Проверяем результат ---
+                if hasattr(result, "value"):
+                    order = result.value
+
+                    # 🔹 Проверяем возраст перед подтверждением
+                    if user_age < 18:
+                        st.sidebar.error("🚫 You must be at least 18 to complete this purchase.")
+                    else:
+                        st.sidebar.success(f"✅ Order created successfully! Total: {order.total:,} ₸")
+                        st.session_state.cart = []
+                        st.rerun()
+
+                elif hasattr(result, "error"):
+                    error_data = result.error
+                    st.sidebar.error(f"❌ Order failed: {error_data.get('error', 'Unknown error')}")
+
+    else:
+        # 🔹 Корзина пуста
         st.sidebar.info("🛒 Your cart is empty")
 
 # Страницы
 def overview_page():
     st.markdown('<div class="main-header">🎭 Event Management System</div>', unsafe_allow_html=True)
-    
     st.markdown('<div class="section-header">📊 System Overview</div>', unsafe_allow_html=True)
-    
-    overview_col1, overview_col2, overview_col3, overview_col4 = st.columns(4)
-    
-    with overview_col1:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("🏛 Venues", len(st.session_state.venues))
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with overview_col2:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("🎪 Events", len(st.session_state.events))
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with overview_col3:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("🎫 Ticket Types", len(st.session_state.ticket_types))
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with overview_col4:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        avg_price = average_price(st.session_state.prices)
-        st.metric("💰 Avg Price", f"{avg_price:,.0f} ₸")
-        st.markdown('</div>', unsafe_allow_html=True)
 
+    overview_col1, overview_col2, overview_col3, overview_col4 = st.columns(4)
+
+    with overview_col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🏛 Venues</h3>
+            <p>Currently <b>{len(st.session_state.venues)} venues</b> available for events!</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with overview_col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🎪 Events</h3>
+            <p>Currently hosting <b>{len(st.session_state.events)} active events</b>: concerts, shows, and more!</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with overview_col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🎫 Ticket Types</h3>
+            <p>We have <b>{len(st.session_state.ticket_types)} types of tickets</b> for all events.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with overview_col4:
+        avg_price = average_price(st.session_state.prices)
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>💰 Avg Price</h3>
+            <p>The average ticket price is <b>{avg_price:,.0f} ₸</b>.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
 def events_page():
     st.markdown('<div class="section-header">🎪 All Events</div>', unsafe_allow_html=True)
     

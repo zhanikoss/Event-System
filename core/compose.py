@@ -3,11 +3,14 @@ from core.domain import CartItem, Order, TicketType, Quota, Rule, Price
 from typing import Tuple, Dict, Callable
 from core.transforms import safe_ticket, validate_cart_item, validate_order
 
-def create_order_pipeline(cart_items: Tuple[CartItem, ...],
-                        ticket_types: Tuple[TicketType, ...],
-                        quotas: Tuple[Quota, ...],
-                        rules: Tuple[Rule, ...],
-                        prices: Tuple[Price, ...]) -> Either[Dict, Order]:
+def create_order_pipeline(
+    cart_items: Tuple[CartItem, ...],
+    ticket_types: Tuple[TicketType, ...],
+    quotas: Tuple[Quota, ...],
+    rules: Tuple[Rule, ...],
+    prices: Tuple[Price, ...],
+    user_age: int = None  # ← добавляем возраст
+) -> Either[Dict, Order]:
     """Пайплайн создания заказа без try/except"""
     
     def calculate_total(valid_items: Tuple[CartItem, ...]) -> int:
@@ -25,13 +28,13 @@ def create_order_pipeline(cart_items: Tuple[CartItem, ...],
     validated_items = []
     for item in cart_items:
         validation_result = validate_cart_item(item, quotas, rules)
-        if hasattr(validation_result, 'error'):  # ← Left case
+        if isinstance(validation_result, Left):  # ← Left case
             return validation_result  # Возвращаем первую ошибку
         validated_items.append(validation_result.value)
     
-    # ЕСЛИ КОРЗИНА ПУСТАЯ - возвращаем ошибку
+    # Если корзина пустая — возвращаем ошибку
     if not validated_items:
-        return Either.left({"error": "Cart is empty"})  # ← ДОБАВЬ ЭТУ ПРОВЕРКУ!
+        return Either.left({"error": "Cart is empty"})
     
     # Создаем заказ
     order = Order(
@@ -42,5 +45,5 @@ def create_order_pipeline(cart_items: Tuple[CartItem, ...],
         status="held"
     )
     
-    # Финальная валидация заказа
-    return validate_order(order, rules)
+    # Финальная валидация заказа, включая age limit
+    return validate_order(order, rules, user_age)
