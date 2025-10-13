@@ -1,169 +1,144 @@
+/* === COTTON CANDY DREAM THEME === */
 body, [data-testid="stAppViewContainer"] {
-    background-color: #FFE0F5 !important;
-    font-family: 'Outfit', sans-serif !important;
-    color: #2c2c2c !important;
+    background: radial-gradient(circle at top left, #FFF8FB 0%, #FFC1E3 50%, #B3E5FF 100%) !important;
+    font-family: 'Outfit', 'Poppins', sans-serif !important;
+    color: #392946 !important;
+    overflow-x: hidden;
 }
 
-/* === Main Header === */
+/* === FLOATY HEADER === */
 .main-header {
-    font-size: 3rem;
-    font-weight: 700;
+    font-size: 3.2rem;
+    font-weight: 800;
     text-align: center;
-    background: linear-gradient(45deg, #D00072, #FD1A95, #FB0FDE);
+    background: linear-gradient(90deg, #FF5CB8, #E3B3FF, #B3E5FF);
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 2.5rem;
-    letter-spacing: 1px;
+    margin: 2.5rem 0 1rem;
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 25px rgba(227, 179, 255, 0.4);
+    animation: floatHeader 4s ease-in-out infinite alternate;
 }
 
-/* === Section Headers === */
+@keyframes floatHeader {
+    from { transform: translateY(0); }
+    to { transform: translateY(-5px); }
+}
+
+/* === SECTION TITLES === */
 .section-header {
-    font-size: 1.8rem;
-    color: #FD1A95;
-    border-bottom: 3px solid #FB0FDE;
-    padding-bottom: 0.4rem;
-    margin: 2rem 0 1.2rem 0;
+    font-size: 1.9rem;
+    color: #9D9DFF;
+    border-left: 8px solid #FFB3DC;
+    padding-left: 12px;
+    margin: 2rem 0 1rem;
     font-weight: 600;
 }
 
-/* === Metric Cards === */
-.metric-card {
-    background: linear-gradient(135deg, #FD78EA, #FFE0F5);
-    color: #4b0044;
-    padding: 1.5rem;
+/* === GLASS CARDS === */
+.metric-card, .event-card, .ticket-card, .admin-card {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(12px);
     border-radius: 18px;
-    text-align: center;
-    box-shadow: 0 6px 10px rgba(208, 0, 114, 0.25);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(253, 26, 149, 0.3);
-}
-
-/* === Event Cards === */
-.event-card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 1.5rem 1.8rem;
-    box-shadow: 0 4px 10px rgba(251, 15, 222, 0.15);
-    border-left: 6px solid #FD1A95;
-    margin: 1.2rem 0;
-    transition: all 0.3s ease;
-}
-
-.event-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 14px rgba(251, 15, 222, 0.25);
-}
-
-/* === Ticket Cards === */
-.ticket-card {
-    background: #FFE0F5;
-    border: 1px solid #FD78EA;
-    border-radius: 14px;
-    padding: 1.2rem 1.5rem;
+    padding: 1.5rem;
     margin: 1rem 0;
-    box-shadow: 0 4px 10px rgba(253, 26, 149, 0.2);
+    box-shadow: 0 6px 20px rgba(255, 92, 184, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
-/* === Admin Cards === */
-.admin-card {
-    background: linear-gradient(135deg, #FD78EA, #FFE0F5);
-    border: 2px solid #FB0FDE;
-    border-radius: 12px;
-    padding: 1rem 1.2rem;
-    box-shadow: 0 4px 8px rgba(253, 26, 149, 0.25);
-    color: #4b0044;
+.metric-card:hover, .event-card:hover, .ticket-card:hover, .admin-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 25px rgba(179, 229, 255, 0.4);
 }
 
-/* === Cart Items === */
+/* === CUTE CART ITEMS === */
 .cart-item {
-    background: #FFE0F5;
-    padding: 0.8rem;
+    background: linear-gradient(90deg, #FFE6F7, #E3B3FF);
+    padding: 1rem;
+    border-radius: 12px;
     margin: 0.5rem 0;
-    border-radius: 10px;
-    border-left: 5px solid #FD1A95;
-    box-shadow: 0 2px 5px rgba(253, 26, 149, 0.15);
+    box-shadow: 0 4px 12px rgba(255, 92, 184, 0.15);
+    border-left: 6px solid #FF5CB8;
+    transition: 0.3s ease;
 }
 
-/* === Buttons (Streamlit style override) === */
+.cart-item:hover {
+    transform: scale(1.02);
+}
+
+/* === BUTTONS === */
 .stButton button {
-    background: linear-gradient(90deg, #D00072, #FD1A95, #FB0FDE);
+    background: linear-gradient(90deg, #FF5CB8, #E3B3FF, #B3E5FF);
     color: white !important;
     border: none;
-    border-radius: 10px;
-    padding: 0.6rem 1.2rem;
+    border-radius: 12px;
+    padding: 0.8rem 1.4rem;
     font-weight: 600;
     font-size: 1rem;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.25s ease-in-out;
+    box-shadow: 0 4px 10px rgba(255, 92, 184, 0.25);
 }
 
 .stButton button:hover {
-    background: linear-gradient(90deg, #FD1A95, #FB0FDE, #FD78EA);
-    transform: scale(1.05);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 18px rgba(179, 229, 255, 0.3);
 }
 
-/* === Sidebar === */
+/* === SIDEBAR === */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #FFE0F5 0%, #FD78EA 100%) !important;
-    color: #3b0032 !important;
-    box-shadow: 4px 0 12px rgba(251, 15, 222, 0.2);
+    background: linear-gradient(180deg, #FFF8FB, #E3B3FF);
+    box-shadow: 4px 0 15px rgba(255, 92, 184, 0.25);
+    color: #392946 !important;
+    backdrop-filter: blur(12px);
 }
 
-.stSidebar .stButton button {
-    background: linear-gradient(90deg, #D00072, #FD1A95);
-    color: white !important;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.stSidebar .stButton button:hover {
-    background: linear-gradient(90deg, #FD1A95, #FB0FDE);
-}
-
-/* === Scrollbar Styling === */
+/* === SCROLLBAR === */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
 }
-
 ::-webkit-scrollbar-thumb {
-    background-color: #FD1A95;
+    background: linear-gradient(180deg, #FFB3DC, #B3E5FF);
     border-radius: 10px;
 }
 
-/* === Dark Mode === */
+/* === FLOATING CONFETTI EFFECT === */
+@keyframes confetti {
+    0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateY(600px) rotate(360deg); opacity: 0; }
+}
+
+.confetti {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: linear-gradient(45deg, #FF5CB8, #B3E5FF, #E3B3FF);
+    border-radius: 50%;
+    top: -10px;
+    animation: confetti 8s infinite;
+    pointer-events: none;
+}
+
+/* Random confetti positions */
+.confetti:nth-child(1) { left: 5%; animation-delay: 0s; }
+.confetti:nth-child(2) { left: 15%; animation-delay: 2s; }
+.confetti:nth-child(3) { left: 35%; animation-delay: 1s; }
+.confetti:nth-child(4) { left: 55%; animation-delay: 3s; }
+.confetti:nth-child(5) { left: 75%; animation-delay: 1.5s; }
+.confetti:nth-child(6) { left: 90%; animation-delay: 0.5s; }
+
+/* === DARK MODE === */
 @media (prefers-color-scheme: dark) {
     body, [data-testid="stAppViewContainer"] {
-        background-color: #1a101a !important;
-        color: #f2f2f2 !important;
+        background: radial-gradient(circle, #2E1F2F 0%, #3E2B4F 100%) !important;
+        color: #FEEFFF !important;
     }
-
-    .main-header {
-        background: linear-gradient(45deg, #FD1A95, #FB0FDE);
-        -webkit-text-fill-color: transparent;
-    }
-
-    .section-header {
-        color: #FD78EA;
-        border-bottom-color: #FD1A95;
-    }
-
     .metric-card, .event-card, .ticket-card, .admin-card {
-        background: #241324 !important;
-        border-color: #FD78EA !important;
-        color: #f2f2f2 !important;
-        box-shadow: 0 4px 10px rgba(253, 26, 149, 0.2);
+        background: rgba(45, 35, 55, 0.8) !important;
+        border: 1px solid #C86BFA;
     }
-
-    .stButton button {
-        background: linear-gradient(90deg, #D00072, #FB0FDE) !important;
-        color: #fff !important;
-    }
-
     section[data-testid="stSidebar"] {
-        background: #1e1420 !important;
-        box-shadow: none;
+        background: #2E1F2F !important;
     }
 }
