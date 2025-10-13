@@ -1,4 +1,5 @@
 import json
+from core.ftypes import Maybe, Either
 from functools import reduce
 from core.domain import (
     User, Venue, Hall, Event, Zone, TicketType, 
@@ -107,3 +108,93 @@ def available_quotas(quotas: tuple[Quota, ...]) -> list[dict]:
     """Find available quotas"""
     return [{"ticket_type_id": q.ticket_type_id, "available": q.total - q.sold}
             for q in quotas if q.total > q.sold]
+
+def safe_ticket(ttypes: Tuple[TicketType, ...], tid: str) -> Maybe[TicketType]:
+    """Безопасное получение типа билета"""
+    ticket = next((t for t in ttypes if t.id == tid), None)
+    return Maybe.just(ticket) if ticket else Maybe.nothing()
+
+def validate_cart_item(item: CartItem, quotas: Tuple[Quota, ...],
+                      rules: Tuple[Rule, ...]) -> Either[Dict, CartItem]:
+    """Валидация элемента корзины"""
+    # Проверяем квоты
+    quota = next((q for q in quotas if q.ticket_type_id == item.ticket_type_id), None)
+    if not quota:
+        return Either.left({"error": "Quota not found", "item_id": item.id})
+
+    if (quota.total - quota.sold) < item.qty:
+        return Either.left({
+            "error": "Not enough tickets",
+            "available": quota.total - quota.sold,
+            "requested": item.qty
+        })
+
+    # Проверяем правила (например, лимит на пользователя)
+    user_limit_rules = [r for r in rules if r.kind == "per_user_limit"]
+    for rule in user_limit_rules:
+        payload_dict = rule.payload_dict  # ← ИСПРАВЬ ЗДЕСЬ! Используй payload_dict вместо payload
+        max_tickets = payload_dict.get("max_tickets", 10)  # ← Теперь работает!
+        if item.qty > max_tickets:
+            return Either.left({
+                "error": "User limit exceeded",
+                "max_allowed": max_tickets,
+                "requested": item.qty
+            })
+    
+    return Either.right(item)
+
+def validate_order(order: Order, rules: Tuple[Rule, ...], user_age: int = None) -> Either[Dict, Order]:
+    """Валидация заказа с проверкой возраста"""
+    age_rules = [r for r in rules if r.kind == "age_limit"]
+    
+    for rule in age_rules:
+        payload_dict = rule.payload_dict
+        min_age = payload_dict.get("min_age", 18)
+        
+        # Если возраст не передан, пропускаем проверку
+        if user_age is None:
+            continue
+            
+        # Проверяем возраст
+        if user_age < min_age:
+            return Either.left({
+                "error": "Age restriction",
+                "required_age": min_age,
+                "user_age": user_age,
+                "message": f"Minimum age {min_age}+ required. Your age: {user_age}"
+            })
+    
+    return Either.right(order)
+    # Проверка других правил может быть добавлена здесь
+    # Например: даты мероприятия, доступность и т.д.
+    
+    return Either.right(order)  # Всегда возвращаем успех для демо
+
+def validate_cart_item(item: CartItem, quotas: Tuple[Quota, ...],
+                      rules: Tuple[Rule, ...]) -> Either[Dict, CartItem]:
+    """Валидация элемента корзины"""
+    # Проверяем квоты
+    quota = next((q for q in quotas if q.ticket_type_id == item.ticket_type_id), None)
+    if not quota:
+        return Either.left({"error": "Quota not found", "item_id": item.id})
+
+    if (quota.total - quota.sold) < item.qty:
+        return Either.left({
+            "error": "Not enough tickets",
+            "available": quota.total - quota.sold,
+            "requested": item.qty
+        })
+
+    # Проверяем правила (например, лимит на пользователя)
+    user_limit_rules = [r for r in rules if r.kind == "per_user_limit"]
+    for rule in user_limit_rules:
+        payload_dict = rule.payload_dict  # ← ИСПРАВЬ ЗДЕСЬ! Используй payload_dict вместо payload
+        max_tickets = payload_dict.get("max_tickets", 10)  # ← Теперь работает!
+        if item.qty > max_tickets:
+            return Either.left({
+                "error": "User limit exceeded",
+                "max_allowed": max_tickets,
+                "requested": item.qty
+            })
+    
+    return Either.right(item)

@@ -98,13 +98,16 @@ class EventMsg:
 @dataclass(frozen=True)
 class Rule:
     id: str
-    kind: str  
-    payload: str = "{}"  
+    kind: str
+    payload: Any  # ← Может быть как str, так и dict
     
     @property
     def payload_dict(self) -> Dict[str, Any]:
-        return json.loads(self.payload) if self.payload else {}
-    
-    @classmethod
-    def create(cls, id: str, kind: str, payload_dict: Dict[str, Any]):
-        return cls(id=id, kind=kind, payload=json.dumps(payload_dict, sort_keys=True))
+        """Безопасное получение payload как словарь"""
+        import json
+        if isinstance(self.payload, dict):
+            return self.payload  # ← Если уже словарь, возвращаем как есть
+        elif isinstance(self.payload, str):
+            return json.loads(self.payload) if self.payload else {}
+        else:
+            return {}  # Fallback

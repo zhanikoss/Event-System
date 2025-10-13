@@ -40,10 +40,13 @@ if 'data_loaded' not in st.session_state:
         st.session_state.prices = data[6]
         st.session_state.orders = data[7]
         st.session_state.quotas = data[8]
+        st.session_state.admission_gates = data[9] if len(data) > 9 else []
+        st.session_state.scans = data[10] if len(data) > 10 else []
+        st.session_state.event_msgs = data[11] if len(data) > 11 else []
+        st.session_state.rules = data[12] if len(data) > 12 else []  # ← ДОБАВЬ ЭТУ СТРОЧКУ!
         st.session_state.data_loaded = True
     except Exception as e:
         st.error(f"Error loading data: {e}")
-
 # Инициализация
 if 'user' not in st.session_state:
     st.session_state.user = None
@@ -461,6 +464,147 @@ def reports_page():
         st.write(f"- Hits: {cache_info.hits} ")
         st.write(f"- Misses: {cache_info.misses} ")
         st.write(f"- Cache Size: {cache_info.currsize}/{cache_info.maxsize} ")
+def functional_core_page():
+    st.markdown('<div class="section-header">⚡️ Functional Core - Smart Error Handling</div>', unsafe_allow_html=True)
+    
+    st.write("**Testing Maybe/Either patterns for safe operations**")
+    
+    # Раздели на колонки
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🎫 Test Maybe Monad", use_container_width=True):
+            test_maybe_demo()
+    
+    with col2:
+        if st.button("🛒 Test Either Monad", use_container_width=True):
+            test_either_demo()
+    
+    with col3:
+        if st.button("📦 Test Full Pipeline", use_container_width=True):
+            test_pipeline_demo()
+    
+    # Покажем текущую корзину если есть
+    if st.session_state.cart:
+        st.markdown("---")
+        st.write("**Current cart items for testing:**")
+        for item in st.session_state.cart:
+            st.write(f"- {get_ticket_display_name_safe(item.ticket_type_id)} (Qty: {item.qty})")
+
+def test_maybe_demo():
+    """Демо Maybe монады"""
+    from core.transforms import safe_ticket
+    
+    st.markdown("### 🎫 Maybe Demo - Safe Ticket Search")
+    
+    # Тестовые данные
+    test_ticket_id = "t1"  # Можно сделать selectbox для выбора
+    
+    result = safe_ticket(tuple(st.session_state.ticket_types), test_ticket_id)
+    
+    ticket = result.get_or_else(None)
+    
+    if ticket:
+        st.success(f"✅ **Ticket Found!**")
+        st.write(f"**Name:** {ticket.title}")
+        st.write(f"**Event ID:** {ticket.event_id}")
+        st.write(f"**Refundable:** {'Yes' if ticket.refundable else 'No'}")
+    else:
+        st.error(f"❌ **Ticket Not Found**")
+        st.write(f"Ticket ID '{test_ticket_id}' doesn't exist")
+
+def test_either_demo():
+    """Демо Either монады"""
+    from core.transforms import validate_cart_item
+    
+    st.markdown("### 🛒 Either Demo - Cart Validation")
+    
+    if not st.session_state.cart:
+        st.warning("🛒 Your cart is empty! Add some tickets first.")
+        return
+    
+    # Берем первый item из корзины
+    test_item = st.session_state.cart[0]
+    
+    st.write(f"**Testing item:** {get_ticket_display_name_safe(test_item.ticket_type_id)}")
+    st.write(f"**Quantity:** {test_item.qty}")
+    
+    result = validate_cart_item(
+        test_item, 
+        tuple(st.session_state.quotas),
+        tuple(st.session_state.rules)
+    )
+    
+    # Проверяем тип результата
+    if hasattr(result, 'value'):  # Right case
+        st.success("✅ **Validation PASSED!**")
+        st.write("Item is valid and can be purchased")
+        
+        # Покажем информацию о квотах
+        quota = next((q for q in st.session_state.quotas if q.ticket_type_id == test_item.ticket_type_id), None)
+        if quota:
+            st.info(f"📊 Quota info: {quota.sold}/{quota.total} sold, {quota.total - quota.sold} available")
+    
+    elif hasattr(result, 'error'):  # Left case
+        st.error("❌ **Validation FAILED!**")
+        error_data = result.error
+        st.write(f"**Error:** {error_data.get('error', 'Unknown error')}")
+        
+        if 'available' in error_data:
+            st.write(f"**Available:** {error_data['available']}")
+        if 'requested' in error_data:
+            st.write(f"**Requested:** {error_data['requested']}")
+
+def test_pipeline_demo():
+    """Демо полного пайплайна (автоматический запуск без кнопок)"""
+    from core.compose import create_order_pipeline
+
+    st.markdown("### 📦 Full Order Pipeline Demo")
+    st.divider()
+
+    if not st.session_state.cart:
+        st.warning("🛒 Your cart is empty! Add some tickets first.")
+        return
+
+    with st.spinner("Running order pipeline..."):
+        result = create_order_pipeline(
+            tuple(st.session_state.cart),
+            tuple(st.session_state.ticket_types),
+            tuple(st.session_state.quotas),
+            tuple(st.session_state.rules),
+            tuple(st.session_state.prices)
+        )
+
+    st.markdown("#### Pipeline Results:")
+
+    # --- Успешный результат ---
+    if hasattr(result, "value"):
+        order = result.value
+        st.success("✅ Order Created Successfully!")
+        st.write(f"Order ID: {order.id}")
+        st.write(f"Total Amount: {order.total:,} ₸")
+        st.write(f"Status: {order.status}")
+
+    # --- Ошибка ---
+    elif hasattr(result, "error"):
+        error_data = result.error
+        st.error("❌ Pipeline Failed!")
+        st.write(f"Error: {error_data.get('error', 'Unknown error')}")
+        
+# Не забудь добавить эту функцию если её нет
+def get_ticket_display_name_safe(ticket_type_id):
+    """Безопасное получение названия билета"""
+    try:
+        ticket_type = next((t for t in st.session_state.ticket_types if t.id == ticket_type_id), None)
+        if not ticket_type:
+            return f"Ticket {ticket_type_id}"
+        
+        event = next((e for e in st.session_state.events if e.id == ticket_type.event_id), None)
+        event_name = event.title if event else "Unknown Event"
+        
+        return f"{ticket_type.title} - {event_name}"
+    except:
+        return f"Ticket {ticket_type_id}"
 
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
@@ -470,15 +614,17 @@ cart_section()
 st.sidebar.markdown("---")
 st.sidebar.markdown("## 🧭 Navigation")
 
-pages = ["🏠 Overview", "🎪 Events", "🎫 Tickets", "🎯 Advanced Search", "🏟️ Venue Details"]
+pages = ["🏠 Overview", "🎪 Events", "🎫 Tickets", "🎯 Advanced Search", "🏟 Venue Details"]
 
-# Только админ видит Admin и Reports
+# Только админ видит Admin, Reports и Functional Core
 if st.session_state.user and is_admin(st.session_state.user):
     pages.append("👨‍💼 Admin")
-    pages.append("📊 Reports") 
+    pages.append("📊 Reports")
+    pages.append("⚡️ Functional Core")  # ← ДОБАВЛЯЕМ НОВУЮ СТРАНИЦУ
 
 page = st.sidebar.radio("Go to:", pages, key="nav_radio")
 
+# Обработка страниц
 if "🏠" in page:
     overview_page()
 elif "🎪" in page:
@@ -487,9 +633,11 @@ elif "🎫" in page:
     tickets_page()
 elif "🎯" in page:
     advanced_search_page()
-elif "🏟️" in page:
+elif "🏟" in page:
     venue_details_page()
 elif "📊" in page: 
     reports_page()
 elif "👨‍💼" in page:
     admin_page()
+elif "⚡️" in page:  
+    functional_core_page()
