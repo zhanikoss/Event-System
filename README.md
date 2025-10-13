@@ -50,7 +50,6 @@ Event-System/
 └── README.md
 
 yaml
-Копировать код
 
 ---
 
@@ -64,7 +63,7 @@ cd Event-System
 bash
 Копировать код
 python -m venv .venv
-source .venv/bin/activate      # On Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
 3. Run the web application
 bash
@@ -104,10 +103,10 @@ Memoization — caching repetitive computations
 
 Authors
 Zhaniya Atabek
-
+Aruzhan Dauletkyzy
 Teya Kim
 
-Aruzhan Dauletkyzy
+
 
 Supervisor
 Kassenkhan Arai Meirambaykyzy
