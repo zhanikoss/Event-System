@@ -62,7 +62,7 @@ body, [data-testid="stAppViewContainer"] {
     box-shadow: 0 8px 16px rgba(253, 26, 149, 0.25);
     transition: all 0.3s ease;
     width: 100%;
-    min-height: 150px; /* чуть выше, чтобы «воздушнее» */
+    min-height: 250px; /* чуть выше, чтобы «воздушнее» */
     position: relative;
     overflow: hidden;
 }

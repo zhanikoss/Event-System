@@ -61,17 +61,17 @@ git clone https://github.com/zhanikoss/Event-System.git
 cd Event-System
 2. Set up the environment
 bash
-Копировать код
+
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 3. Run the web application
 bash
-Копировать код
+
 streamlit run app/app_streamlit.py
 4. Run tests (optional)
 bash
-Копировать код
+
 pytest -v
 How to Use
 Open the Streamlit application.
