@@ -154,7 +154,23 @@ def cart_section():
                     if user_age < 18:
                         st.sidebar.error("🚫 You must be at least 18 to complete this purchase.")
                     else:
+                        # ✅ СОЗДАЕМ НОВЫЙ ЗАКАЗ И ДОБАВЛЯЕМ В ОБЩИЙ СПИСОК
+                        new_order = order
+                        
+                        # Добавляем заказ в session_state (общий список)
+                        updated_orders = list(st.session_state.orders)
+                        updated_orders.append(new_order)
+                        st.session_state.orders = tuple(updated_orders)
+                        
+                        # ✅ ДОБАВЛЯЕМ В СПИСОК НОВЫХ ЗАКАЗОВ ДЛЯ АНАЛИТИКИ
+                        if 'new_orders' not in st.session_state:
+                            st.session_state.new_orders = []
+                        st.session_state.new_orders.append(new_order)
+                        
                         st.sidebar.success(f"✅ Order created successfully! Total: {order.total:,} ₸")
+                        st.sidebar.info(f"📦 Order ID: #{order.id}")
+                        
+                        # Очищаем корзину
                         st.session_state.cart = []
                         st.rerun()
 
@@ -563,22 +579,62 @@ def reports_page():
                     st.info("ℹ️ No data to display")
     
     with tab3:
-        st.markdown("### 📈 Sales Reports")
+        st.markdown("### 📈 Sales Analytics Dashboard")
         # Твоя существующая логика отчетов по продажам
         st.info("General sales reports and analytics")
         
-        # Пример базовой статистики
-        total_orders = len(st.session_state.orders)
-        paid_orders = len([o for o in st.session_state.orders if o.status == "paid"])
-        total_revenue = sum(o.total for o in st.session_state.orders if o.status == "paid")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Orders", total_orders)
-        with col2:
-            st.metric("Paid Orders", paid_orders)
-        with col3:
-            st.metric("Total Revenue", f"{total_revenue:,} ₸")
+        # Live statistics - ПО ВСЕМ заказам (полная картина)
+    # Initialize new orders list if not exists
+    if 'new_orders' not in st.session_state:
+        st.session_state.new_orders = []
+    
+    # ALL STATISTICS - both overall and new orders
+    total_orders = len(st.session_state.orders)
+    paid_orders = len([o for o in st.session_state.orders if o.status == "paid"])
+    total_revenue = sum([o.total for o in st.session_state.orders if o.status == "paid"])
+    
+    new_orders = st.session_state.new_orders
+    total_new_orders = len(new_orders)
+    paid_new_orders = len([o for o in new_orders if o.status == "paid"])
+    total_new_revenue = sum(o.total for o in new_orders if o.status == "paid")
+    
+    # Overall Statistics
+    st.markdown("#### 📊 Overall Statistics")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Orders", total_orders)
+    with col2:
+        st.metric("Paid Orders", paid_orders)
+    with col3:
+        st.metric("Total Revenue", f"{total_revenue:,} ₸")
+    
+    # New Orders Statistics (Live)
+    st.markdown("#### 🆕 Live Session Statistics")
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        st.metric("New Orders", total_new_orders)
+    with col5:
+        st.metric("Paid New Orders", paid_new_orders)
+    with col6:
+        st.metric("New Revenue", f"{total_new_revenue:,} ₸")
+    
+    # Recent Orders Feed - only new orders from current session
+    st.markdown("#### 📋 Recent Orders (Current Session)")
+    
+    if new_orders:
+        # Show in reverse order (newest first)
+        for order in reversed(new_orders[-10:]):  # last 10 new orders
+            status_icon = "✅" if order.status == "paid" else "⏳"
+            timestamp = "Just now"
+            st.write(f"{status_icon} Order #{order.id} - {order.total:,} ₸ - {order.status} - {timestamp}")
+    else:
+        st.info("📭 No new orders yet. Orders will appear here as users make purchases.")
+    
+    # Clear history button (optional)
+    if new_orders and st.button("🔄 Clear Session History", key="clear_orders"):
+        st.session_state.new_orders = []
+        st.rerun()
+   
 def functional_core_page():
     st.markdown('<div class="section-header">⚡️ Functional Core - Smart Error Handling</div>', unsafe_allow_html=True)
     
