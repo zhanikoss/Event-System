@@ -13,6 +13,7 @@ from core.filters import by_city, by_date_range, by_price_range, compose_filters
 from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy, calculate_total_seats
 from core.memo import quote_tickets, benchmark_quotes
 from core.compose import create_order_pipeline
+from core.lazy import lazy_gate_flow, iter_orders, simulate_scan_stream
 
 # Настройка страницы
 st.set_page_config(
@@ -468,44 +469,116 @@ def venue_details_page():
                 
                 st.markdown("---")
 def reports_page():
-    st.markdown('<div class="section-header">📊 Reports - Cache Performance</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">📊 Reports & Analytics</div>', unsafe_allow_html=True)
     
     if not st.session_state.user or not is_admin(st.session_state.user):
         st.error("🚫 Admin access required")
         return
     
-    st.write("**Quotes (cached)** - testing memoization performance")
+    # Добавляем вкладки для разных отчетов
+    tab1, tab2, tab3 = st.tabs(["⚡️ Cache Performance", "🚀 Lazy Computations", "📈 Sales Reports"])
     
-    # ADD THIS BUTTON
-    if st.button("🚀 Run Cache Performance Test", type="primary"):
-        with st.spinner("Running performance test..."):
-            time_no_cache, time_with_cache = benchmark_quotes(300)
+    with tab1:
+        st.markdown("### 🎯 Memoization")
+        st.write("Quotes (cached) - testing memoization performance")
         
-        # Show results
+        # Кнопка теста производительности кэша
+        if st.button("🚀 Run Cache Performance Test", type="primary", key="cache_test"):
+            with st.spinner("Running performance test..."):
+                time_no_cache, time_with_cache = benchmark_quotes(300)
+            
+            # Показываем результаты
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Time without cache", f"{time_no_cache:.0f} ms")
+            with col2:
+                st.metric("Time with cache", f"{time_with_cache:.0f} ms")
+            with col3:
+                speedup = time_no_cache / time_with_cache if time_with_cache > 0 else 0
+                st.metric("Speed Improvement", f"{speedup:.1f}x")
+            
+            # График
+            st.write("Performance comparison:")
+            chart_data = {
+                'Scenario': ['Without Cache', 'With Cache'],
+                'Time (ms)': [time_no_cache, time_with_cache]
+            }
+            st.bar_chart(chart_data, x='Scenario', y='Time (ms)')
+            
+            # Информация о кэше
+            cache_info = quote_tickets.cache_info()
+            st.write("Cache Statistics:")
+            st.write(f"- Hits: {cache_info.hits} ")
+            st.write(f"- Misses: {cache_info.misses} ")
+            st.write(f"- Cache Size: {cache_info.currsize}/{cache_info.maxsize} ")
+    
+    with tab2:
+        st.markdown("### 🚀 Lazy computations")
+        
+        # Демонстрация ленивого потока заказов
+        st.markdown("#### 🛒 Lazy Order filtering")
+        status_filter = st.selectbox("Order status", ["all", "paid", "held", "cancelled"], key="lazy_filter")
+        
+        if status_filter != "all":
+            from core.lazy import iter_orders
+            filtered_orders = list(iter_orders(tuple(st.session_state.orders), lambda o: o.status == status_filter))
+            st.write(f"🎯 Найдено заказов: **{len(filtered_orders)}**")
+            
+            # Показываем несколько заказов
+            st.write("First 5 orders:")
+            for order in filtered_orders[:5]:
+                st.write(f"- Order #{order.id}: {order.status} - {order.total:,} ₸")
+        
+        # Демонстрация онлайн-потока сканирований
+        st.markdown("#### 📊 Real-time Gate Load")
+        window_size = st.slider("Analysis window (minutes)", 1, 30, 5, key="lazy_window")
+        
+        if st.button("Start stream", key="lazy_demo"):
+            from core.lazy import lazy_gate_flow, simulate_scan_stream
+            
+            # Симуляция потока сканирований
+            with st.spinner("Generating scan stream..."):
+                simulated_scans = simulate_scan_stream(100)
+                flow_data = list(lazy_gate_flow(simulated_scans, window_size))
+            
+            # Визуализация
+            if flow_data:
+                st.success(f"✅ Generated {len(flow_data)} measurements!")
+                
+                # Берем последние уникальные состояния для красивого графика
+                latest_counts = {}
+                for gate_id, count in flow_data[-20:]:  # Последние 20 измерений
+                    latest_counts[gate_id] = count
+                
+                if latest_counts:
+                    st.bar_chart(latest_counts)
+                    
+                    # Показываем сырые данные
+                    with st.expander("📋 Show the raw data"):
+                        st.write("Last 10 measurements:")
+                        for gate_id, count in list(flow_data[-10:]):
+                            st.write(f"- {gate_id}: {count} customer(s)")
+                else:
+                    st.info("ℹ️ No data to display")
+    
+    with tab3:
+        st.markdown("### 📈 Sales Reports")
+        # Твоя существующая логика отчетов по продажам
+        st.info("General sales reports and analytics")
+        
+        # Пример базовой статистики
+        total_orders = len(st.session_state.orders)
+        paid_orders = len([o for o in st.session_state.orders if o.status == "paid"])
+        total_revenue = sum(o.total for o in st.session_state.orders if o.status == "paid")
+        
         col1, col2, col3 = st.columns(3)
-        
         with col1:
-            st.metric("Time without cache", f"{time_no_cache:.0f} ms")
+            st.metric("Total Orders", total_orders)
         with col2:
-            st.metric("Time with cache", f"{time_with_cache:.0f} ms")
+            st.metric("Paid Orders", paid_orders)
         with col3:
-            speedup = time_no_cache / time_with_cache if time_with_cache > 0 else 0
-            st.metric("Speed Improvement", f"{speedup:.1f}x")
-        
-        # Chart
-        st.write("**Performance comparison:**")
-        chart_data = {
-            'Scenario': ['Without Cache', 'With Cache'],
-            'Time (ms)': [time_no_cache, time_with_cache]
-        }
-        st.bar_chart(chart_data, x='Scenario', y='Time (ms)')
-        
-        # Cache info
-        cache_info = quote_tickets.cache_info()
-        st.write("**Cache Statistics:**")
-        st.write(f"- Hits: {cache_info.hits} ")
-        st.write(f"- Misses: {cache_info.misses} ")
-        st.write(f"- Cache Size: {cache_info.currsize}/{cache_info.maxsize} ")
+            st.metric("Total Revenue", f"{total_revenue:,} ₸")
 def functional_core_page():
     st.markdown('<div class="section-header">⚡️ Functional Core - Smart Error Handling</div>', unsafe_allow_html=True)
     

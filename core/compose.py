@@ -9,12 +9,10 @@ def create_order_pipeline(
     quotas: Tuple[Quota, ...],
     rules: Tuple[Rule, ...],
     prices: Tuple[Price, ...],
-    user_age: int = None  # ← добавляем возраст
+    user_age: int = None 
 ) -> Either[Dict, Order]:
-    """Пайплайн создания заказа без try/except"""
     
     def calculate_total(valid_items: Tuple[CartItem, ...]) -> int:
-        """Вычисление общей стоимости"""
         total = 0
         for item in valid_items:
             ticket = next((t for t in ticket_types if t.id == item.ticket_type_id), None)
@@ -24,19 +22,17 @@ def create_order_pipeline(
                     total += price.amount * item.qty
         return total
     
-    # Валидируем все элементы корзины
+
     validated_items = []
     for item in cart_items:
         validation_result = validate_cart_item(item, quotas, rules)
-        if isinstance(validation_result, Left):  # ← Left case
-            return validation_result  # Возвращаем первую ошибку
+        if isinstance(validation_result, Left):  
+            return validation_result  
         validated_items.append(validation_result.value)
     
-    # Если корзина пустая — возвращаем ошибку
     if not validated_items:
         return Either.left({"error": "Cart is empty"})
     
-    # Создаем заказ
     order = Order(
         id=f"order_{len(validated_items)}",
         event_id=validated_items[0].ticket_type_id,
@@ -45,5 +41,4 @@ def create_order_pipeline(
         status="held"
     )
     
-    # Финальная валидация заказа, включая age limit
     return validate_order(order, rules, user_age)
