@@ -130,10 +130,8 @@ def cart_section():
         if total > 0:
             st.sidebar.markdown(f"💰 Total: {total:,} ₸")
 
-            # 🔹 Поле возраста появляется только при наличии товаров
             user_age = st.sidebar.number_input("🎂 Your age", min_value=0, max_value=120, step=1)
 
-            # 🔹 Кнопка оформления
             if st.sidebar.button("💳 Checkout", key="checkout_btn", use_container_width=True):
                 from core.compose import create_order_pipeline
 
@@ -146,31 +144,39 @@ def cart_section():
                         tuple(st.session_state.prices),
                     )
 
-                # --- Проверяем результат ---
                 if hasattr(result, "value"):
                     order = result.value
 
-                    # 🔹 Проверяем возраст перед подтверждением
                     if user_age < 18:
                         st.sidebar.error("🚫 You must be at least 18 to complete this purchase.")
                     else:
-                        # ✅ СОЗДАЕМ НОВЫЙ ЗАКАЗ И ДОБАВЛЯЕМ В ОБЩИЙ СПИСОК
-                        new_order = order
+                        # ✅ ОБНОВЛЯЕМ FRP ДАННЫЕ ПРИ УСПЕШНОЙ ПОКУПКЕ
+                        if 'frp_data' in st.session_state:
+                            st.session_state.frp_data["events_history"].append("PURCHASED")
+                            st.session_state.frp_data["total_purchases"] += 1
+                            st.session_state.frp_data["total_revenue"] += order.total
                         
-                        # Добавляем заказ в session_state (общий список)
+                        # Создаем заказ
+                        from core.domain import Order
+                        paid_order = Order(
+                            id=order.id,
+                            event_id=order.event_id,
+                            items=order.items,
+                            total=order.total,
+                            status="paid"
+                        )
+                        
                         updated_orders = list(st.session_state.orders)
-                        updated_orders.append(new_order)
+                        updated_orders.append(paid_order)
                         st.session_state.orders = tuple(updated_orders)
                         
-                        # ✅ ДОБАВЛЯЕМ В СПИСОК НОВЫХ ЗАКАЗОВ ДЛЯ АНАЛИТИКИ
                         if 'new_orders' not in st.session_state:
                             st.session_state.new_orders = []
-                        st.session_state.new_orders.append(new_order)
+                        st.session_state.new_orders.append(paid_order)
                         
-                        st.sidebar.success(f"✅ Order created successfully! Total: {order.total:,} ₸")
-                        st.sidebar.info(f"📦 Order ID: #{order.id}")
+                        st.sidebar.success(f"✅ Order created successfully! Total: {paid_order.total:,} ₸")
+                        st.sidebar.info(f"📦 Order ID: #{paid_order.id}")
                         
-                        # Очищаем корзину
                         st.session_state.cart = []
                         st.rerun()
 
@@ -179,7 +185,6 @@ def cart_section():
                     st.sidebar.error(f"❌ Order failed: {error_data.get('error', 'Unknown error')}")
 
     else:
-        # 🔹 Корзина пуста
         st.sidebar.info("🛒 Your cart is empty")
 
 # Страницы
@@ -250,15 +255,25 @@ name if venue else 'Unknown'} | 📍 {venue.city if venue else 'Unknown'}</p>
                 with col2:
                     if st.button("🛒 Add to cart", key=f"add_{ticket.id}"):
                         cart_item = CartItem(
-                            id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
-                            ticket_type_id=ticket.id,
-                            qty=1
-                        )
-                        st.session_state.cart.append(cart_item)
-                        st.success(f"Added {ticket.title} to cart!")
-                        st.rerun()
+                        id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
+        ticket_type_id=ticket.id,
+        qty=1
+    )
+    st.session_state.cart.append(cart_item)
+    
+    # 🔹 ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH/HOLD при добавлении в корзину
+    from core.frp import event_bus
+    event_bus.publish("SEARCH", {
+        "ticket_type_id": ticket.id,
+        "event_id": ticket.event_id,
+        "user_id": st.session_state.user.id,
+        "action": "added_to_cart"
+    })
+    
+    st.success(f"Added {ticket.title} to cart!")
+    st.rerun()
         
-        st.markdown("---")
+st.markdown("---")
 
 def tickets_page():
     st.markdown('<div class="section-header">🎫 Available Tickets</div>', unsafe_allow_html=True)
@@ -279,15 +294,25 @@ def tickets_page():
         
         # Кнопка добавления в корзину
         if st.session_state.user:
-            if st.button("🛒 Add to Cart", key=f"ticket_add_{ticket.id}"):
+            if st.button("🛒 Add to cart", key=f"add_{ticket.id}"):
                 cart_item = CartItem(
-                    id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
-                    ticket_type_id=ticket.id,
-                    qty=1
-                )
-                st.session_state.cart.append(cart_item)
-                st.success(f"Added {ticket.title} to cart!")
-                st.rerun()
+        id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
+        ticket_type_id=ticket.id,
+        qty=1
+    )
+    st.session_state.cart.append(cart_item)
+    
+    # 🔹 ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH/HOLD при добавлении в корзину
+    from core.frp import event_bus
+    event_bus.publish("SEARCH", {
+        "ticket_type_id": ticket.id,
+        "event_id": ticket.event_id,
+        "user_id": st.session_state.user.id,
+        "action": "added_to_cart"
+    })
+    
+    st.success(f"Added {ticket.title} to cart!")
+    st.rerun()
 
 def admin_page():
     st.markdown('<div class="section-header">👨‍💼 Admin Panel</div>', unsafe_allow_html=True)
@@ -776,7 +801,78 @@ def get_ticket_display_name_safe(ticket_type_id):
         return f"{ticket_type.title} - {event_name}"
     except:
         return f"Ticket {ticket_type_id}"
-
+def frp_page():
+    st.markdown("### 🚀 FRP - Real-time Event Processing")
+    
+    # Инициализируем состояние
+    if 'frp_data' not in st.session_state:
+        st.session_state.frp_data = {
+            "total_holds": 0,
+            "total_purchases": 0, 
+            "total_revenue": 0,
+            "total_scans": 0,
+            "events_history": []
+        }
+    
+    # Простые кнопки которые сразу обновляют данные
+    st.markdown("#### 🎮 Generate Events")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("🔍 SEARCH", key="search_btn"):
+            st.session_state.frp_data["events_history"].append("SEARCH")
+            st.rerun()
+    
+    with col2:
+        if st.button("📦 HOLD", key="hold_btn"):
+            st.session_state.frp_data["events_history"].append("HOLD")
+            st.session_state.frp_data["total_holds"] += 1
+            st.rerun()
+    
+    with col3:
+        if st.button("💰 PURCHASE", key="purchase_btn"):
+            st.session_state.frp_data["events_history"].append("PURCHASED")
+            st.session_state.frp_data["total_purchases"] += 1
+            st.session_state.frp_data["total_revenue"] += 2500
+            st.rerun()
+    
+    with col4:
+        if st.button("🎫 SCAN", key="scan_btn"):
+            st.session_state.frp_data["events_history"].append("SCANNED") 
+            st.session_state.frp_data["total_scans"] += 1
+            st.rerun()
+    
+    # Простые панели которые показывают данные из session_state
+    st.markdown("#### 📊 Live Dashboards")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Holds", st.session_state.frp_data["total_holds"])
+    with col2:
+        st.metric("Total Purchases", st.session_state.frp_data["total_purchases"])
+    with col3:
+        st.metric("Total Revenue", f"{st.session_state.frp_data['total_revenue']:,} ₸")
+    with col4:
+        st.metric("Total Scans", st.session_state.frp_data["total_scans"])
+    
+    # История событий
+    st.markdown("#### 📋 Event History")
+    if st.session_state.frp_data["events_history"]:
+        for i, event in enumerate(reversed(st.session_state.frp_data["events_history"][-10:])):
+            st.write(f"{i+1}. {event}")
+    else:
+        st.info("No events yet")
+    
+    # Кнопка сброса
+    if st.button("🔄 Reset All Data", key="reset_frp"):
+        st.session_state.frp_data = {
+            "total_holds": 0,
+            "total_purchases": 0,
+            "total_revenue": 0, 
+            "total_scans": 0,
+            "events_history": []
+        }
+        st.rerun()
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
 login_section()
@@ -791,7 +887,8 @@ pages = ["🏠 Overview", "🎪 Events", "🎫 Tickets", "🎯 Advanced Search",
 if st.session_state.user and is_admin(st.session_state.user):
     pages.append("👨‍💼 Admin")
     pages.append("📊 Reports")
-    pages.append("⚡️ Functional Core")  # ← ДОБАВЛЯЕМ НОВУЮ СТРАНИЦУ
+    pages.append("⚡️ Functional Core")
+    pages.append("🔄 Async/FRP")  # ← ДОБАВЬ ЭТУ СТРОЧКУ!
 
 page = st.sidebar.radio("Go to:", pages, key="nav_radio")
 
@@ -812,3 +909,5 @@ elif "👨‍💼" in page:
     admin_page()
 elif "⚡️" in page:  
     functional_core_page()
+elif "🔄" in page:
+    frp_page()
