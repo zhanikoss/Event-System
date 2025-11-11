@@ -117,6 +117,11 @@ def cart_section():
 
                 # Кнопка удаления
                 if st.sidebar.button(f"🗑 Remove", key=f"cart_remove_{i}"):
+                    # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ CANCELLED при удалении из корзины
+                    if 'frp_data' in st.session_state:
+                        st.session_state.frp_data["events_history"].append("CANCELLED")
+                        st.session_state.frp_data["total_cancellations"] = st.session_state.frp_data.get("total_cancellations", 0) + 1
+                    
                     st.session_state.cart.pop(i)
                     st.rerun()
 
@@ -136,6 +141,11 @@ def cart_section():
                 from core.compose import create_order_pipeline
 
                 with st.spinner("Processing your order..."):
+                    # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ HOLD перед оформлением (бронирование)
+                    if 'frp_data' in st.session_state:
+                        st.session_state.frp_data["events_history"].append("HOLD")
+                        st.session_state.frp_data["total_holds"] = st.session_state.frp_data.get("total_holds", 0) + len(st.session_state.cart)
+                    
                     result = create_order_pipeline(
                         tuple(st.session_state.cart),
                         tuple(st.session_state.ticket_types),
@@ -149,8 +159,12 @@ def cart_section():
 
                     if user_age < 18:
                         st.sidebar.error("🚫 You must be at least 18 to complete this purchase.")
+                        # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ CANCELLED при отказе из-за возраста
+                        if 'frp_data' in st.session_state:
+                            st.session_state.frp_data["events_history"].append("CANCELLED")
+                            st.session_state.frp_data["total_cancellations"] = st.session_state.frp_data.get("total_cancellations", 0) + 1
                     else:
-                        # ✅ ОБНОВЛЯЕМ FRP ДАННЫЕ ПРИ УСПЕШНОЙ ПОКУПКЕ
+                        # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ PURCHASED при успешной покупке
                         if 'frp_data' in st.session_state:
                             st.session_state.frp_data["events_history"].append("PURCHASED")
                             st.session_state.frp_data["total_purchases"] += 1
@@ -163,8 +177,7 @@ def cart_section():
                             event_id=order.event_id,
                             items=order.items,
                             total=order.total,
-                            status="paid"
-                        )
+                            status="paid")
                         
                         updated_orders = list(st.session_state.orders)
                         updated_orders.append(paid_order)
@@ -183,6 +196,10 @@ def cart_section():
                 elif hasattr(result, "error"):
                     error_data = result.error
                     st.sidebar.error(f"❌ Order failed: {error_data.get('error', 'Unknown error')}")
+                    # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ CANCELLED при ошибке оформления
+                    if 'frp_data' in st.session_state:
+                        st.session_state.frp_data["events_history"].append("CANCELLED")
+                        st.session_state.frp_data["total_cancellations"] = st.session_state.frp_data.get("total_cancellations", 0) + 1
 
     else:
         st.sidebar.info("🛒 Your cart is empty")
@@ -238,15 +255,14 @@ def events_page():
         <div class="event-card">
             <h3>🎭 {event.title}</h3>
             <p>📅 <strong>Date:</strong> {event.start} to {event.end}</p>
-            <p>🏟 <strong>Venue:</strong> {venue.
-name if venue else 'Unknown'} | 📍 {venue.city if venue else 'Unknown'}</p>
+            <p>🏟 <strong>Venue:</strong> {venue.name if venue else 'Unknown'} | 📍 {venue.city if venue else 'Unknown'}</p>
         </div>
         """, unsafe_allow_html=True)
         
         # Добавляем кнопки для добавления в корзину
         event_tickets = [t for t in st.session_state.ticket_types if t.event_id == event.id]
         if event_tickets and st.session_state.user:
-            st.write("**Available tickets:**")
+            st.write("Available tickets:")
             for ticket in event_tickets:
                 price = get_ticket_price(ticket.id, st.session_state.prices)
                 col1, col2 = st.columns([3, 1])
@@ -255,25 +271,21 @@ name if venue else 'Unknown'} | 📍 {venue.city if venue else 'Unknown'}</p>
                 with col2:
                     if st.button("🛒 Add to cart", key=f"add_{ticket.id}"):
                         cart_item = CartItem(
-                        id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
-        ticket_type_id=ticket.id,
-        qty=1
-    )
-    st.session_state.cart.append(cart_item)
-    
-    # 🔹 ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH/HOLD при добавлении в корзину
-    from core.frp import event_bus
-    event_bus.publish("SEARCH", {
-        "ticket_type_id": ticket.id,
-        "event_id": ticket.event_id,
-        "user_id": st.session_state.user.id,
-        "action": "added_to_cart"
-    })
-    
-    st.success(f"Added {ticket.title} to cart!")
-    st.rerun()
+                            id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
+                            ticket_type_id=ticket.id,
+                            qty=1
+                        )
+                        st.session_state.cart.append(cart_item)
+                        
+                        # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH при добавлении в корзину
+                        if 'frp_data' in st.session_state:
+                            st.session_state.frp_data["events_history"].append("SEARCH")
+                            st.session_state.frp_data["total_searches"] = st.session_state.frp_data.get("total_searches", 0) + 1
+                        
+                        st.success(f"Added {ticket.title} to cart!")
+                        st.rerun()
         
-st.markdown("---")
+        st.markdown("---")
 
 def tickets_page():
     st.markdown('<div class="section-header">🎫 Available Tickets</div>', unsafe_allow_html=True)
@@ -377,6 +389,11 @@ def advanced_search_page():
     # Кнопка поиска
     if st.button("🔍 Search with Smart Filters", type="primary"):
         
+        # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH при поиске
+        if 'frp_data' in st.session_state:
+            st.session_state.frp_data["events_history"].append("SEARCH")
+            st.session_state.frp_data["total_searches"] = st.session_state.frp_data.get("total_searches", 0) + 1
+        
         # ПРИМЕНЯЕМ ФИЛЬТРЫ С ЛЯМБДАМИ
         filtered_events = list(st.session_state.events)
         
@@ -403,6 +420,10 @@ def advanced_search_page():
         if show_refundable:
             filtered_tickets = [t for t in filtered_tickets if t.refundable]
         
+        # Сохраняем результаты для отображения
+        st.session_state.filtered_tickets = filtered_tickets
+        st.session_state.filtered_events = filtered_events
+        
         # Результаты
         if filtered_tickets:
             st.success(f"🎉 Found {len(filtered_tickets)} matching tickets!")
@@ -425,12 +446,11 @@ def advanced_search_page():
                         zone_hierarchy = get_zone_hierarchy(tuple(hall_zones), zone.id)
                         
                         if zone_hierarchy:
-                            with st.expander(f"🏟️ {ticket.title} - Seating Details"):
-                                st.write(f"**Venue:** {venue.name}, {venue.city}")
-                                st.write(f"**Zone:** {zone.name}")
+                            with st.expander(f"🏟 {ticket.title} - Seating Details"):
+                                st.write(f"Venue: {venue.name}, {venue.city}")
+                                st.write(f"Zone: {zone.name}")
                                 
-                                # РЕКУРСИЯ: показываем путь к зоне
-                                st.write("**Location in venue:**")
+                                # РЕКУРСИЯ: показываем путь к зонеst.write("Location in venue:")
                                 for z, level in zone_hierarchy:
                                     indent = "&nbsp;" * (level * 4)
                                     st.markdown(f"{indent}📌 {z.name}", unsafe_allow_html=True)
@@ -438,7 +458,7 @@ def advanced_search_page():
                 # Информация о билете
                 col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.write(f"**{ticket.title}**")
+                    st.write(f"{ticket.title}")
                     st.write(f"🎭 {event.title if event else ''} | 📍 {venue.city if venue else ''}")
                     st.write(f"💰 {price:,} ₸ | 🔄 {'Refundable' if ticket.refundable else 'Non-refundable'}")
                 
@@ -451,6 +471,12 @@ def advanced_search_page():
                                 qty=1
                             )
                             st.session_state.cart.append(cart_item)
+                            
+                            # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH при добавлении в корзину из поиска
+                            if 'frp_data' in st.session_state:
+                                st.session_state.frp_data["events_history"].append("SEARCH")
+                                st.session_state.frp_data["total_searches"] = st.session_state.frp_data.get("total_searches", 0) + 1
+                            
                             st.success("Added to cart!")
                             st.rerun()
                     else:
@@ -459,6 +485,89 @@ def advanced_search_page():
                 st.markdown("---")
         else:
             st.warning("😔 No tickets found matching your criteria")
+
+def venue_details_page():
+    st.markdown('<div class="section-header">🏟 Venue Details</div>', unsafe_allow_html=True)
+    
+    # Выбор площадки
+    selected_venue = st.selectbox(
+        "Select Venue", 
+        st.session_state.venues,
+        format_func=lambda v: f"{v.name} - {v.city}"
+    )
+    
+    if selected_venue:
+        # Информация о площадке
+        st.markdown(f"""
+        <div class="venue-card">
+            <h3>🏛 {selected_venue.name}</h3>
+            <p>📍 <strong>City:</strong> {selected_venue.city}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Залы этой площадки
+        venue_halls = [h for h in st.session_state.halls if h.venue_id == selected_venue.id]
+        
+        if venue_halls:
+            st.subheader("🎪 Halls at this Venue")
+            
+            for hall in venue_halls:
+                # События в этом зале
+                hall_events = [e for e in st.session_state.events if e.hall_id == hall.id]
+                
+                st.markdown(f"""
+                <div class="hall-card">
+                    <h4>🏟 {hall.name}</h4>
+                    <p>Capacity: <strong>{hall.capacity} people</strong></p>
+                    <p>Upcoming events: <strong>{len(hall_events)}</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # РЕКУРСИЯ: показываем структуру зон зала
+                hall_zones = [z for z in st.session_state.zones if z.hall_id == hall.id]
+                if hall_zones:
+                    with st.expander(f"📋 Zone Structure for {hall.name}"):
+                        # РЕКУРСИЯ: получаем плоский список зон в правильном порядке
+                        flattened_zones = flatten_zone_tree(tuple(hall_zones))
+                        
+                        st.write("**Zone Hierarchy:**")
+                        for zone in flattened_zones:
+                            # Определяем уровень вложенности
+                            level = 0
+                            current_zone = zone
+                            while current_zone.parent_id:
+                                level += 1
+                                current_zone = next((z for z in hall_zones if z.id == current_zone.parent_id), None)
+                                if not current_zone:
+                                    break
+                            
+                            indent = "&nbsp;" * (level * 4)
+                            seats_info = f" ({zone.seats} seats)" if zone.seats else " (Standing zone)"
+                            st.markdown(f"{indent}📍 {zone.name}{seats_info}", unsafe_allow_html=True)
+                
+                # Предстоящие события
+                if hall_events:
+                    st.write("**Upcoming Events:**")
+                    for event in hall_events:
+                        event_tickets = [t for t in st.session_state.ticket_types if t.event_id == event.id]
+                        
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.write(f"🎭 {event.title}")
+                            st.write(f"📅 {event.start} to {event.end}")
+                            st.write(f"🎫 {len(event_tickets)} ticket types available")
+                        
+                        with col2:
+                            if st.session_state.user and event_tickets:
+                                if st.button("View Tickets", key=f"venue_{event.id}"):
+                                    # Переходим к событиям и автоматически фильтруем по этому событию
+                                    st.session_state.selected_event = event.id
+                                    # Здесь можно добавить навигацию если нужно
+                                    st.info(f"Check '{event.title}' in Events page!")
+                
+                st.markdown("---")
+        else:
+            st.info("No halls available for this venue")
 def venue_details_page():
     st.markdown('<div class="section-header">🏟️ Venue Details</div>', unsafe_allow_html=True)
     
