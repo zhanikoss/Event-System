@@ -14,7 +14,7 @@ from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy
 from core.memo import quote_tickets, benchmark_quotes
 from core.compose import create_order_pipeline
 from core.lazy import lazy_gate_flow, iter_orders, simulate_scan_stream
-
+from datetime import datetime
 # Настройка страницы
 st.set_page_config(
     page_title= "Event Management System", 
@@ -308,23 +308,19 @@ def tickets_page():
         if st.session_state.user:
             if st.button("🛒 Add to cart", key=f"add_{ticket.id}"):
                 cart_item = CartItem(
-        id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
-        ticket_type_id=ticket.id,
-        qty=1
-    )
-    st.session_state.cart.append(cart_item)
-    
-    # 🔹 ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH/HOLD при добавлении в корзину
-    from core.frp import event_bus
-    event_bus.publish("SEARCH", {
-        "ticket_type_id": ticket.id,
-        "event_id": ticket.event_id,
-        "user_id": st.session_state.user.id,
-        "action": "added_to_cart"
-    })
-    
-    st.success(f"Added {ticket.title} to cart!")
-    st.rerun()
+                    id=f"cart_{len(st.session_state.cart)}_{ticket.id}",
+                    ticket_type_id=ticket.id,
+                    qty=1
+                )
+                st.session_state.cart.append(cart_item)
+                
+                # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH при добавлении в корзину
+                if 'frp_data' in st.session_state:
+                    st.session_state.frp_data["events_history"].append("SEARCH")
+                    st.session_state.frp_data["total_searches"] = st.session_state.frp_data.get("total_searches", 0) + 1
+                
+                st.success(f"Added {ticket.title} to cart!")
+                st.rerun()
 
 def admin_page():
     st.markdown('<div class="section-header">👨‍💼 Admin Panel</div>', unsafe_allow_html=True)
@@ -913,75 +909,74 @@ def get_ticket_display_name_safe(ticket_type_id):
 def frp_page():
     st.markdown("### 🚀 FRP - Real-time Event Processing")
     
-    # Инициализируем состояние
+    # Инициализируем все метрики
     if 'frp_data' not in st.session_state:
         st.session_state.frp_data = {
-            "total_holds": 0,
-            "total_purchases": 0, 
-            "total_revenue": 0,
+            "total_searches": 0,
+            "total_holds": 0, 
+            "total_purchases": 0,
+            "total_cancellations": 0,
             "total_scans": 0,
+            "total_revenue": 0,
             "events_history": []
         }
     
-    # Простые кнопки которые сразу обновляют данные
-    st.markdown("#### 🎮 Generate Events")
-    col1, col2, col3, col4 = st.columns(4)
+    # Панель всех метрик
+    st.markdown("#### 📊 Live System Metrics")
+    col1, col2, col3 = st.columns(3)
+    col4, col5, col6 = st.columns(3)
     
     with col1:
-        if st.button("🔍 SEARCH", key="search_btn"):
+        st.metric("Searches", st.session_state.frp_data["total_searches"])
+    with col2:
+        st.metric("Holds", st.session_state.frp_data["total_holds"])
+    with col3:
+        st.metric("Purchases", st.session_state.frp_data["total_purchases"])
+    with col4:
+        st.metric("Cancellations", st.session_state.frp_data["total_cancellations"])
+    with col5:
+        st.metric("Scans", st.session_state.frp_data["total_scans"])
+    with col6:
+        st.metric("Revenue", f"{st.session_state.frp_data['total_revenue']:,} ₸")
+    
+    # Live events feed
+    st.markdown("#### 📋 Live Event Stream")
+    
+    if st.session_state.frp_data["events_history"]:
+        for i, event in enumerate(reversed(st.session_state.frp_data["events_history"][-15:])):
+            icon = {
+                "SEARCH": "🔍", 
+                "HOLD": "📦",
+                "PURCHASED": "💰", 
+                "CANCELLED": "❌",
+                "SCANNED": "🎫"
+            }.get(event, "⚡️")
+            
+            st.write(f"{icon} {event} - {datetime.now().strftime('%H:%M:%S')}")
+    else:
+        st.info("No events yet. Start using the system to see live events!")
+    
+    # Кнопки для ручного тестирования (можно удалить потом)
+    st.markdown("#### 🎮 Test Events")
+    test_col1, test_col2, test_col3 = st.columns(3)
+    
+    with test_col1:
+        if st.button("🔍 Search"):
             st.session_state.frp_data["events_history"].append("SEARCH")
+            st.session_state.frp_data["total_searches"] += 1
             st.rerun()
     
-    with col2:
-        if st.button("📦 HOLD", key="hold_btn"):
+    with test_col2:
+        if st.button("📦 Hold"):
             st.session_state.frp_data["events_history"].append("HOLD")
             st.session_state.frp_data["total_holds"] += 1
             st.rerun()
     
-    with col3:
-        if st.button("💰 PURCHASE", key="purchase_btn"):
-            st.session_state.frp_data["events_history"].append("PURCHASED")
-            st.session_state.frp_data["total_purchases"] += 1
-            st.session_state.frp_data["total_revenue"] += 2500
-            st.rerun()
-    
-    with col4:
-        if st.button("🎫 SCAN", key="scan_btn"):
-            st.session_state.frp_data["events_history"].append("SCANNED") 
+    with test_col3:
+        if st.button("🎫 Scan"):
+            st.session_state.frp_data["events_history"].append("SCANNED")
             st.session_state.frp_data["total_scans"] += 1
             st.rerun()
-    
-    # Простые панели которые показывают данные из session_state
-    st.markdown("#### 📊 Live Dashboards")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Holds", st.session_state.frp_data["total_holds"])
-    with col2:
-        st.metric("Total Purchases", st.session_state.frp_data["total_purchases"])
-    with col3:
-        st.metric("Total Revenue", f"{st.session_state.frp_data['total_revenue']:,} ₸")
-    with col4:
-        st.metric("Total Scans", st.session_state.frp_data["total_scans"])
-    
-    # История событий
-    st.markdown("#### 📋 Event History")
-    if st.session_state.frp_data["events_history"]:
-        for i, event in enumerate(reversed(st.session_state.frp_data["events_history"][-10:])):
-            st.write(f"{i+1}. {event}")
-    else:
-        st.info("No events yet")
-    
-    # Кнопка сброса
-    if st.button("🔄 Reset All Data", key="reset_frp"):
-        st.session_state.frp_data = {
-            "total_holds": 0,
-            "total_purchases": 0,
-            "total_revenue": 0, 
-            "total_scans": 0,
-            "events_history": []
-        }
-        st.rerun()
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
 login_section()
@@ -997,7 +992,7 @@ if st.session_state.user and is_admin(st.session_state.user):
     pages.append("👨‍💼 Admin")
     pages.append("📊 Reports")
     pages.append("⚡️ Functional Core")
-    pages.append("🔄 Async/FRP")  # ← ДОБАВЬ ЭТУ СТРОЧКУ!
+    pages.append("🔄 FRP")  # ← ДОБАВЬ ЭТУ СТРОЧКУ!
 
 page = st.sidebar.radio("Go to:", pages, key="nav_radio")
 
