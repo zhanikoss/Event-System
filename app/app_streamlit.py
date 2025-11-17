@@ -98,54 +98,134 @@ def login_section():
 
 # Корзина - ИСПРАВЛЕННАЯ ВЕРСИЯ
 def cart_section():
-    """🛒 Отображает корзину, подсчёт суммы и оформление заказа"""
+    """🛒 Отображает корзину, подсчёт суммы и оформление заказа с глобальными событиями"""
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🛒 Shopping Cart")
+    
+    # Импортируем глобальную шину событий
+    from core.frp import event_bus
+    from datetime import datetime
+    import time
 
     if st.session_state.user and st.session_state.cart:
         total = 0
+        cart_items_details = []
 
+        # Сначала собираем всю информацию о товарах в корзине
         for i, item in enumerate(st.session_state.cart):
             try:
                 price = get_ticket_price(item.ticket_type_id, st.session_state.prices)
                 display_name = get_ticket_display_name_safe(item.ticket_type_id)
-
-                st.sidebar.markdown(f'<div class="cart-item">', unsafe_allow_html=True)
-                st.sidebar.write(f"🎟 {display_name}")
-                st.sidebar.write(f"Qty: {item.qty} × {price:,} ₸")
-                st.sidebar.markdown('</div>', unsafe_allow_html=True)
-
-                # Кнопка удаления
-                if st.sidebar.button(f"🗑 Remove", key=f"cart_remove_{i}"):
-                    # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ CANCELLED при удалении из корзины
-                    if 'frp_data' in st.session_state:
-                        st.session_state.frp_data["events_history"].append("CANCELLED")
-                        st.session_state.frp_data["total_cancellations"] = st.session_state.frp_data.get("total_cancellations", 0) + 1
-                    
-                    st.session_state.cart.pop(i)
-                    st.rerun()
-
-                total += item.qty * price
-                st.sidebar.markdown("---")
-
+                item_total = item.qty * price
+                total += item_total
+                
+                cart_items_details.append({
+                    "index": i,
+                    "item": item,
+                    "price": price,
+                    "display_name": display_name,
+                    "item_total": item_total
+                })
+                
             except Exception as e:
                 st.sidebar.error(f"Error with item {i}: {e}")
                 continue
 
+        # Отображаем все товары в корзине
+        for detail in cart_items_details:
+            i, item, price, display_name, item_total = (
+                detail["index"], detail["item"], detail["price"], 
+                detail["display_name"], detail["item_total"]
+            )
+            
+            st.sidebar.markdown(
+                f"""
+                <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin: 8px 0;">
+                    <div style="font-weight: bold;">🎟 {display_name}</div>
+                    <div>Qty: {item.qty} × {price:,} ₸</div>
+                    <div style="font-weight: bold; color: #2196F3;">Subtotal: {item_total:,} ₸</div>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+
+            # Кнопка удаления - публикуем в ГЛОБАЛЬНУЮ шину
+            if st.sidebar.button(f"🗑 Remove", key=f"cart_remove_{i}"):
+                # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ CANCELLED
+                event_bus.publish("CANCELLED", {
+                    "cart_item_id": item.id,
+                    "ticket_type_id": item.ticket_type_id,
+                    "quantity": item.qty,
+                    "display_name": display_name,
+                    "reason": "user_removed_from_cart",
+                    "user_id": st.session_state.user.id,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                st.session_state.cart.pop(i)
+                st.sidebar.success(f"Removed {display_name} from cart!")
+                st.rerun()
+
+        # Итоговая сумма и оформление заказа
         if total > 0:
-            st.sidebar.markdown(f"💰 Total: {total:,} ₸")
+            st.sidebar.markdown("---")
+            st.sidebar.markdown(
+                f"""
+                <div style="background: #e3f2fd; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 1.2em; font-weight: bold; text-align: center;">
+                        💰 Total: {total:,} ₸
+                    </div>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
 
-            user_age = st.sidebar.number_input("🎂 Your age", min_value=0, max_value=120, step=1)
+            # Информация о пользователе
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("#### 👤 Order Information")
+            
+            user_age = st.sidebar.number_input(
+                "🎂 Your age", 
+                min_value=0, 
+                max_value=120, 
+                step=1,
+                value=25,
+                help="Required for age-restricted events"
+            )
 
-            if st.sidebar.button("💳 Checkout", key="checkout_btn", use_container_width=True):
+            # Кнопка оформления заказа
+            if st.sidebar.button(
+                "💳 Checkout & Purchase", 
+                key="checkout_btn", 
+                use_container_width=True,
+                type="primary"
+            ):
                 from core.compose import create_order_pipeline
 
-                with st.spinner("Processing your order..."):
-                    # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ HOLD перед оформлением (бронирование)
-                    if 'frp_data' in st.session_state:
-                        st.session_state.frp_data["events_history"].append("HOLD")
-                        st.session_state.frp_data["total_holds"] = st.session_state.frp_data.get("total_holds", 0) + len(st.session_state.cart)
+                # ✅ ИСПРАВЛЕНИЕ: используем st.spinner() вместо st.sidebar.spinner()
+                with st.spinner("🔄 Processing your order..."):
+                    # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ HOLD (бронирование)
+                    hold_items = []
+                    for detail in cart_items_details:
+                        hold_items.append({
+                            "ticket_type_id": detail["item"].ticket_type_id,
+                            "display_name": detail["display_name"],
+                            "quantity": detail["item"].qty,
+                            "unit_price": detail["price"],
+                            "subtotal": detail["item_total"]
+                        })
                     
+                    event_bus.publish("HOLD", {
+                        "order_id": f"pending_{int(time.time())}",
+                        "items": hold_items,
+                        "total_amount": total,
+                        "user_id": st.session_state.user.id,
+                        "user_age": user_age,
+                        "timestamp": datetime.now().isoformat(),
+                        "status": "hold_placed"
+                    })
+                    
+                    # Создаем заказ через пайплайн
                     result = create_order_pipeline(
                         tuple(st.session_state.cart),
                         tuple(st.session_state.ticket_types),
@@ -154,55 +234,122 @@ def cart_section():
                         tuple(st.session_state.prices),
                     )
 
+                # Обрабатываем результат
                 if hasattr(result, "value"):
                     order = result.value
 
+                    # Проверка возрастного ограничения
                     if user_age < 18:
-                        st.sidebar.error("🚫 You must be at least 18 to complete this purchase.")
-                        # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ CANCELLED при отказе из-за возраста
-                        if 'frp_data' in st.session_state:
-                            st.session_state.frp_data["events_history"].append("CANCELLED")
-                            st.session_state.frp_data["total_cancellations"] = st.session_state.frp_data.get("total_cancellations", 0) + 1
-                    else:
-                        # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ PURCHASED при успешной покупке
-                        if 'frp_data' in st.session_state:
-                            st.session_state.frp_data["events_history"].append("PURCHASED")
-                            st.session_state.frp_data["total_purchases"] += 1
-                            st.session_state.frp_data["total_revenue"] += order.total
+                        st.sidebar.error("🚫 You must be at least 18 years old to complete this purchase.")
                         
-                        # Создаем заказ
+                        # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ CANCELLED
+                        event_bus.publish("CANCELLED", {
+                            "order_id": order.id,
+                            "reason": "age_restriction_failed",
+                            "required_age": 18,
+                            "user_age": user_age,
+                            "total_amount": total,
+                            "timestamp": datetime.now().isoformat()
+                        })
+                    else:
+                        # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ PURCHASED
+                        purchased_items = []
+                        for detail in cart_items_details:
+                            purchased_items.append({
+                                "ticket_type_id": detail["item"].ticket_type_id,
+                                "display_name": detail["display_name"],
+                                "quantity": detail["item"].qty,
+                                "unit_price": detail["price"]
+                            })
+                        
+                        event_bus.publish("PURCHASED", {
+                            "order_id": order.id,
+                            "event_id": order.event_id,
+                            "items": purchased_items,
+                            "total_amount": order.total,
+                            "currency": "KZT",
+                            "user_id": st.session_state.user.id,
+                            "user_age": user_age,
+                            "timestamp": datetime.now().isoformat(),
+                            "status": "payment_confirmed"
+                        })
+                        
+                        # Создаем заказ в системе
                         from core.domain import Order
                         paid_order = Order(
                             id=order.id,
                             event_id=order.event_id,
                             items=order.items,
                             total=order.total,
-                            status="paid")
+                            status="paid"
+                        )
                         
+                        # Обновляем состояние заказов
                         updated_orders = list(st.session_state.orders)
                         updated_orders.append(paid_order)
                         st.session_state.orders = tuple(updated_orders)
                         
+                        # Сохраняем новые заказы для отображения
                         if 'new_orders' not in st.session_state:
                             st.session_state.new_orders = []
                         st.session_state.new_orders.append(paid_order)
                         
-                        st.sidebar.success(f"✅ Order created successfully! Total: {paid_order.total:,} ₸")
-                        st.sidebar.info(f"📦 Order ID: #{paid_order.id}")
+                        # Показываем успешное сообщение
+                        st.sidebar.success(
+                            f"""
+                            ✅ Order Created Successfully!
+                            
+                            **Order ID:** #{paid_order.id}  
+                            **Total:** {paid_order.total:,} ₸  
+                            **Status:** Paid
+                            """
+                        )
                         
+                        st.sidebar.info("🎫 Your tickets are now available!")
+                        
+                        # Очищаем корзину
                         st.session_state.cart = []
                         st.rerun()
 
                 elif hasattr(result, "error"):
                     error_data = result.error
-                    st.sidebar.error(f"❌ Order failed: {error_data.get('error', 'Unknown error')}")
-                    # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ CANCELLED при ошибке оформления
-                    if 'frp_data' in st.session_state:
-                        st.session_state.frp_data["events_history"].append("CANCELLED")
-                        st.session_state.frp_data["total_cancellations"] = st.session_state.frp_data.get("total_cancellations", 0) + 1
+                    error_message = error_data.get('error', 'Unknown error occurred')
+                    
+                    st.sidebar.error(f"❌ Order Failed: {error_message}")
+                    
+                    # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ CANCELLED при ошибке
+                    event_bus.publish("CANCELLED", {
+                        "reason": "order_processing_failed",
+                        "error_type": error_data.get('type', 'validation_error'),
+                        "error_message": error_message,
+                        "total_amount": total,
+                        "user_id": st.session_state.user.id,
+                        "timestamp": datetime.now().isoformat()
+                    })
 
     else:
-        st.sidebar.info("🛒 Your cart is empty")
+        # Пустая корзина
+        st.sidebar.markdown(
+            """
+            <div style="text-align: center; padding: 20px; color: #666;">
+                <div style="font-size: 3em;">🛒</div>
+                <div style="font-size: 1.2em; font-weight: bold;">Your cart is empty</div>
+                <div>Add some tickets to get started!</div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        
+        # Кнопка для быстрого поиска событий
+        if st.sidebar.button("🔍 Find Events", use_container_width=True):
+            # Публикуем событие поиска
+            event_bus.publish("SEARCH", {
+                "user_id": st.session_state.user.id if st.session_state.user else "anonymous",
+                "search_context": "empty_cart_navigation",
+                "timestamp": datetime.now().isoformat()
+            })
+            # Переключаем на страницу событий (если у вас есть навигация)
+            st.sidebar.info("Navigate to Events page to browse available tickets!")
 
 # Страницы
 def overview_page():
@@ -364,9 +511,14 @@ def admin_page():
                     if st.button("🗑 Delete", key=f"admin_del_venue_{i}"):
                         st.session_state.venues.pop(i)
                         st.rerun()
+
 def advanced_search_page():
     st.markdown('<div class="section-header">🎯 Advanced Search</div>', unsafe_allow_html=True)
     st.write("Find exactly what you're looking for with our smart filters!")
+    
+    # Импортируем глобальную шину событий
+    from core.frp import event_bus
+    from datetime import datetime
     
     # Фильтры в колонках
     col1, col2 = st.columns(2)
@@ -385,10 +537,16 @@ def advanced_search_page():
     # Кнопка поиска
     if st.button("🔍 Search with Smart Filters", type="primary"):
         
-        # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH при поиске
-        if 'frp_data' in st.session_state:
-            st.session_state.frp_data["events_history"].append("SEARCH")
-            st.session_state.frp_data["total_searches"] = st.session_state.frp_data.get("total_searches", 0) + 1
+        # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ SEARCH при поиске
+        event_bus.publish("SEARCH", {
+            "search_type": "advanced_search",
+            "city": selected_city,
+            "date_range": f"{start_date} to {end_date}",
+            "price_range": f"{min_price}-{max_price}",
+            "refundable_only": show_refundable,
+            "user_id": st.session_state.user.id if st.session_state.user else "anonymous",
+            "timestamp": datetime.now().isoformat()
+        })
         
         # ПРИМЕНЯЕМ ФИЛЬТРЫ С ЛЯМБДАМИ
         filtered_events = list(st.session_state.events)
@@ -446,7 +604,8 @@ def advanced_search_page():
                                 st.write(f"Venue: {venue.name}, {venue.city}")
                                 st.write(f"Zone: {zone.name}")
                                 
-                                # РЕКУРСИЯ: показываем путь к зонеst.write("Location in venue:")
+                                # РЕКУРСИЯ: показываем путь к зоне
+                                st.write("Location in venue:")
                                 for z, level in zone_hierarchy:
                                     indent = "&nbsp;" * (level * 4)
                                     st.markdown(f"{indent}📌 {z.name}", unsafe_allow_html=True)
@@ -468,10 +627,15 @@ def advanced_search_page():
                             )
                             st.session_state.cart.append(cart_item)
                             
-                            # ✅ ГЕНЕРИРУЕМ СОБЫТИЕ SEARCH при добавлении в корзину из поиска
-                            if 'frp_data' in st.session_state:
-                                st.session_state.frp_data["events_history"].append("SEARCH")
-                                st.session_state.frp_data["total_searches"] = st.session_state.frp_data.get("total_searches", 0) + 1
+                            # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ SEARCH при добавлении в корзину
+                            event_bus.publish("SEARCH", {
+                                "search_type": "add_to_cart_from_search",
+                                "ticket_type_id": ticket.id,
+                                "ticket_title": ticket.title,
+                                "price": price,
+                                "user_id": st.session_state.user.id if st.session_state.user else "anonymous",
+                                "timestamp": datetime.now().isoformat()
+                            })
                             
                             st.success("Added to cart!")
                             st.rerun()
@@ -481,6 +645,7 @@ def advanced_search_page():
                 st.markdown("---")
         else:
             st.warning("😔 No tickets found matching your criteria")
+
 
 def venue_details_page():
     st.markdown('<div class="section-header">🏟 Venue Details</div>', unsafe_allow_html=True)
@@ -907,76 +1072,314 @@ def get_ticket_display_name_safe(ticket_type_id):
     except:
         return f"Ticket {ticket_type_id}"
 def frp_page():
-    st.markdown("### 🚀 FRP - Real-time Event Processing")
+    st.markdown("### 🚀 FRP - Real-time Event Processing (Global Event Bus)")
     
-    # Инициализируем все метрики
-    if 'frp_data' not in st.session_state:
-        st.session_state.frp_data = {
-            "total_searches": 0,
-            "total_holds": 0, 
-            "total_purchases": 0,
-            "total_cancellations": 0,
-            "total_scans": 0,
-            "total_revenue": 0,
-            "events_history": []
-        }
+    # Используем глобальный EventBus вместо session_state
+    from core.frp import event_bus
     
-    # Панель всех метрик
+    # Автоматическое обновление каждые 3 секунды
+    import time
+    if 'last_frp_update' not in st.session_state:
+        st.session_state.last_frp_update = time.time()
+    
+    if time.time() - st.session_state.last_frp_update > 3:
+        st.session_state.last_frp_update = time.time()
+        st.rerun()
+    
+    # Получаем текущее состояние из глобальной шины
+    current_state = event_bus.get_current_state()
+    stats = current_state["stats"]
+    events_history = current_state["events"]
+    
+    # Информация о подключении
+    st.info("🌐 **Connected to Global Event Bus** - Events will appear on all connected devices/browsers")
+    
+    # Кнопка для ручного обновления
+    col_refresh, col_stats, col_time = st.columns([1, 2, 2])
+    with col_refresh:
+        if st.button("🔄 Refresh Now"):
+            st.rerun()
+    with col_stats:
+        st.caption(f"📊 Total events in system: {len(events_history)}")
+    with col_time:
+        st.caption(f"🕐 Last update: {datetime.now().strftime('%H:%M:%S')}")
+    
+    # Основные метрики из ГЛОБАЛЬНОГО состояния
     st.markdown("#### 📊 Live System Metrics")
-    col1, col2, col3 = st.columns(3)
-    col4, col5, col6 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Searches", st.session_state.frp_data["total_searches"])
+        searches_count = len([e for e in events_history if e.name == "SEARCH"])
+        st.metric("Searches", searches_count, delta=None)
+    
     with col2:
-        st.metric("Holds", st.session_state.frp_data["total_holds"])
+        holds_count = len([e for e in events_history if e.name == "HOLD"])
+        st.metric("Total Holds", holds_count)
+        st.metric("Active Holds", stats["active_holds"])
+    
     with col3:
-        st.metric("Purchases", st.session_state.frp_data["total_purchases"])
+        purchases_count = stats["total_purchases"]
+        st.metric("Purchases", purchases_count)
+        st.metric("Revenue", f"{stats['total_revenue']:,} ₸")
+    
     with col4:
-        st.metric("Cancellations", st.session_state.frp_data["total_cancellations"])
-    with col5:
-        st.metric("Scans", st.session_state.frp_data["total_scans"])
-    with col6:
-        st.metric("Revenue", f"{st.session_state.frp_data['total_revenue']:,} ₸")
+        scans_count = stats["total_scans"]
+        # ✅ ИСПРАВЛЕННЫЙ Success Rate - проверяем деление на ноль
+        success_rate = (stats["successful_scans"] / max(scans_count, 1)) * 100
+        st.metric("Total Scans", scans_count)
+        st.metric("Success Rate", f"{success_rate:.1f}%")
     
-    # Live events feed
-    st.markdown("#### 📋 Live Event Stream")
+    # Cancellations отдельно
+    cancellations_count = len([e for e in events_history if e.name == "CANCELLED"])
+    st.metric("Cancellations", cancellations_count)
     
-    if st.session_state.frp_data["events_history"]:
-        for i, event in enumerate(reversed(st.session_state.frp_data["events_history"][-15:])):
-            icon = {
-                "SEARCH": "🔍", 
-                "HOLD": "📦",
-                "PURCHASED": "💰", 
-                "CANCELLED": "❌",
-                "SCANNED": "🎫"
-            }.get(event, "⚡️")
+    # Live events feed из ГЛОБАЛЬНОЙ истории - ИСПРАВЛЕННОЕ ВРЕМЯ
+    st.markdown("#### 📋 Global Event Stream (Live)")
+    
+    if events_history:
+        # Группируем события по типам для статистики
+        event_types = {}
+        for event in events_history:
+            event_types[event.name] = event_types.get(event.name, 0) + 1
+        
+        st.caption(f"Event distribution: {', '.join([f'{k}: {v}' for k, v in event_types.items()])}")
+        
+        # Отображаем последние события
+        recent_events = list(reversed(events_history[-20:]))  # Последние 20 событий
+        
+        for event in recent_events:
+            # Иконки для разных типов событий
+            icon_config = {
+                "SEARCH": {"icon": "🔍", "color": "#4CAF50"},
+                "HOLD": {"icon": "📦", "color": "#FF9800"}, 
+                "PURCHASED": {"icon": "💰", "color": "#2196F3"},
+                "CANCELLED": {"icon": "❌", "color": "#F44336"},
+                "SCANNED": {"icon": "🎫", "color": "#9C27B0"},
+                "PRICE_CHANGED": {"icon": "📊", "color": "#607D8B"}
+            }
             
-            st.write(f"{icon} {event} - {datetime.now().strftime('%H:%M:%S')}")
+            config = icon_config.get(event.name, {"icon": "⚡️", "color": "#757575"})
+            
+            # ⚡️ ИСПРАВЛЕНИЕ: используем время события, а не текущее время
+            try:
+                # Парсим время из события (оно уже есть в event.ts)
+                event_time = datetime.fromisoformat(event.ts)
+                # Форматируем с секундами
+                formatted_time = event_time.strftime('%H:%M:%S')
+                # Добавляем дату, если событие не сегодняшнее
+                if event_time.date() != datetime.now().date():
+                    formatted_time = event_time.strftime('%m/%d %H:%M:%S')
+            except:
+                formatted_time = "Unknown time"
+            
+            # Красивое отображение события
+            st.markdown(
+                f"""
+                <div style="border-left: 4px solid {config['color']}; padding: 8px 12px; margin: 4px 0; background: #f8f9fa; border-radius: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; color: {config['color']};">
+                            {config['icon']} {event.name}
+                        </span>
+                        <span style="color: #666; font-size: 0.9em; font-family: monospace;">{formatted_time}</span>
+                    </div>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+            
+            # Дополнительная информация о событии
+            if event.payload:
+                with st.expander("Event Details", expanded=False):
+                    st.json(event.payload)
+                    
+                    # Показываем сколько времени прошло с момента события
+                    try:
+                        event_time = datetime.fromisoformat(event.ts)
+                        time_diff = datetime.now() - event_time
+                        minutes_ago = int(time_diff.total_seconds() / 60)
+                        seconds_ago = int(time_diff.total_seconds())
+                        
+                        if minutes_ago == 0:
+                            time_text = f"{seconds_ago} seconds ago"
+                        elif minutes_ago < 60:
+                            time_text = f"{minutes_ago} minutes ago"
+                        else:
+                            hours_ago = minutes_ago // 60
+                            time_text = f"{hours_ago} hours ago"
+                            
+                        st.caption(f"🕐 Event occurred: {time_text}")
+                    except:
+                        pass
     else:
-        st.info("No events yet. Start using the system to see live events!")
+        st.info("🚀 No events yet. Use the test buttons below or make purchases to see live events!")
     
-    # Кнопки для ручного тестирования (можно удалить потом)
-    st.markdown("#### 🎮 Test Events")
-    test_col1, test_col2, test_col3 = st.columns(3)
+    # Расширенные аналитические панели с правильным временем
+    st.markdown("#### 📈 Analytics Dashboards")
+    
+    tab1, tab2, tab3 = st.tabs(["💰 Sales Analytics", "🎫 Gate Analytics", "📊 Event Timeline"])
+    
+    with tab1:
+        # Аналитика продаж по часам
+        purchases = [e for e in events_history if e.name == "PURCHASED"]
+        if purchases:
+            hourly_sales = {}
+            for purchase in purchases:
+                try:
+                    hour = datetime.fromisoformat(purchase.ts).strftime("%H:00")
+                    amount = purchase.payload.get("amount", purchase.payload.get("total_amount", 0))
+                    hourly_sales[hour] = hourly_sales.get(hour, 0) + amount
+                except:
+                    continue
+            
+            if hourly_sales:
+                st.markdown("**Sales by Hour**")
+                max_sales = max(hourly_sales.values()) if hourly_sales else 1
+                for hour, amount in sorted(hourly_sales.items()):
+                    progress = min(amount / max_sales, 1.0)
+                    st.progress(progress, text=f"{hour}: {amount:,} ₸")
+        else:
+            st.info("No purchase data available")
+    
+    with tab2:
+        # Статистика по воротам
+        scans = [e for e in events_history if e.name == "SCANNED"]
+        if scans:
+            gate_stats = {}
+            for scan in scans[-50:]:  # Последние 50 сканирований
+                gate_id = scan.payload.get("gate_id", "unknown")
+                if gate_id not in gate_stats:
+                    gate_stats[gate_id] = {"total": 0, "successful": 0}
+                
+                gate_stats[gate_id]["total"] += 1
+                if scan.payload.get("ok", False):
+                    gate_stats[gate_id]["successful"] += 1
+            
+            if gate_stats:
+                st.markdown("**Gate Performance (Last 50 scans)**")
+                for gate_id, stats_data in gate_stats.items():
+                    rate = (stats_data["successful"] / max(stats_data["total"], 1)) * 100
+                    st.write(f"**Gate `{gate_id}`**: {stats_data['successful']}/{stats_data['total']} ({rate:.1f}%)")
+        else:
+            st.info("No scan data available")
+    
+    with tab3:
+        # Временная шкала событий
+        if events_history:
+            st.markdown("**Recent Event Timeline**")
+            
+            # Берем последние 10 событий
+            recent_for_timeline = events_history[-10:]
+            
+            for event in reversed(recent_for_timeline):
+                try:
+                    event_time = datetime.fromisoformat(event.ts)
+                    time_str = event_time.strftime('%H:%M:%S')
+                    
+                    icon_config = {
+                        "SEARCH": "🔍", "HOLD": "📦", "PURCHASED": "💰", 
+                        "CANCELLED": "❌", "SCANNED": "🎫", "PRICE_CHANGED": "📊"
+                    }
+                    
+                    icon = icon_config.get(event.name, "⚡️")
+                    
+                    # Показываем как давно было событие
+                    time_diff = datetime.now() - event_time
+                    seconds_ago = int(time_diff.total_seconds())
+                    
+                    if seconds_ago < 60:
+                        ago_text = f"{seconds_ago}s ago"
+                    else:
+                        ago_text = f"{seconds_ago//60}m ago"
+                    
+                    st.write(f"{icon} `{time_str}` - **{event.name}** (*{ago_text}*)")
+                    
+                except:
+                    st.write(f"⚡️ {event.name} - Time unknown")
+        else:
+            st.info("No events for timeline")
+    
+    # Кнопки для тестирования - публикуют в ГЛОБАЛЬНУЮ шину
+    st.markdown("#### 🎮 Test Global Events")
+    st.warning("These events will appear on ALL connected devices/browsers with correct timestamps!")
+    
+    test_col1, test_col2, test_col3, test_col4 = st.columns(4)
     
     with test_col1:
-        if st.button("🔍 Search"):
-            st.session_state.frp_data["events_history"].append("SEARCH")
-            st.session_state.frp_data["total_searches"] += 1
+        if st.button("🔍 Global Search", use_container_width=True):
+            event_bus.publish("SEARCH", {
+                "event_id": f"event_{int(time.time())}",
+                "user_query": "concert tickets",
+                "results_count": 8,
+                "timestamp": datetime.now().isoformat()  # ✅ Правильное время
+            })
             st.rerun()
     
     with test_col2:
-        if st.button("📦 Hold"):
-            st.session_state.frp_data["events_history"].append("HOLD")
-            st.session_state.frp_data["total_holds"] += 1
+        if st.button("📦 Global Hold", use_container_width=True):
+            event_bus.publish("HOLD", {
+                "order_id": f"hold_{int(time.time())}",
+                "items": [{"ticket_type": "VIP", "qty": 2}, {"ticket_type": "STANDARD", "qty": 1}],
+                "amount": 15000,
+                "user_id": "test_user",
+                "timestamp": datetime.now().isoformat()  # ✅ Правильное время
+            })
             st.rerun()
     
     with test_col3:
-        if st.button("🎫 Scan"):
-            st.session_state.frp_data["events_history"].append("SCANNED")
-            st.session_state.frp_data["total_scans"] += 1
+        if st.button("💰 Global Purchase", use_container_width=True):
+            event_bus.publish("PURCHASED", {
+                "order_id": f"order_{int(time.time())}",
+                "items": [{"ticket_type": "VIP", "qty": 2}],
+                "amount": 20000,
+                "currency": "KZT",
+                "user_id": "test_user",
+                "timestamp": datetime.now().isoformat()  # ✅ Правильное время
+            })
             st.rerun()
+    
+    with test_col4:
+        if st.button("🎫 Global Scan", use_container_width=True):
+            event_bus.publish("SCANNED", {
+                "order_id": f"order_scan_{int(time.time())}",
+                "gate_id": f"gate_{int(time.time()) % 3 + 1}",
+                "ok": True,
+                "timestamp": datetime.now().isoformat()  # ✅ Правильное время
+            })
+            st.rerun()
+    
+    # Дополнительные тестовые события
+    test_col5, test_col6 = st.columns(2)
+    
+    with test_col5:
+        if st.button("❌ Global Cancel", use_container_width=True):
+            event_bus.publish("CANCELLED", {
+                "order_id": f"cancel_{int(time.time())}",
+                "reason": "test_cancellation",
+                "user_id": "test_user",
+                "timestamp": datetime.now().isoformat()  # ✅ Правильное время
+            })
+            st.rerun()
+    
+    with test_col6:
+        if st.button("📊 Price Change", use_container_width=True):
+            event_bus.publish("PRICE_CHANGED", {
+                "ticket_type_id": f"type_{int(time.time()) % 10}",
+                "old_price": 5000,
+                "new_price": 4500,
+                "reason": "dynamic_pricing",
+                "timestamp": datetime.now().isoformat()  # ✅ Правильное время
+            })
+            st.rerun()
+
+    # Информация о системе
+    with st.expander("ℹ️ System Information"):
+        st.write(f"**Event Bus Subscribers:**")
+        for event_name, handlers in event_bus._subscribers.items():
+            st.write(f"- {event_name}: {len(handlers)} handlers")
+        
+        st.write(f"**Last event:** {events_history[-1].name if events_history else 'None'}")
+        st.write(f"**Current time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
 login_section()
