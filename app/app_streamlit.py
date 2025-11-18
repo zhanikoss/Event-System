@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import sys
+import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.transforms import load_seed, average_price, get_ticket_display_name, get_ticket_price, validate_order
@@ -12,9 +13,12 @@ import json
 from core.filters import by_city, by_date_range, by_price_range, compose_filters
 from core.recursion import flatten_zone_tree, expand_seatmap, get_zone_hierarchy, calculate_total_seats
 from core.memo import quote_tickets, benchmark_quotes
-from core.compose import create_order_pipeline
 from core.lazy import lazy_gate_flow, iter_orders, simulate_scan_stream
 from datetime import datetime
+from core.ftypes import Either
+from core.domain import Order
+from core.compose import create_order_pipeline  
+
 # Настройка страницы
 st.set_page_config(
     page_title= "Event Management System", 
@@ -131,7 +135,7 @@ def cart_section():
                 st.sidebar.error(f"Error with item {i}: {e}")
                 continue
 
-        # Отображаем все товары в корзине
+        # Отображаем все товары в корзине с новыми CSS классами
         for detail in cart_items_details:
             i, item, price, display_name, item_total = (
                 detail["index"], detail["item"], detail["price"], 
@@ -140,41 +144,39 @@ def cart_section():
             
             st.sidebar.markdown(
                 f"""
-                <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin: 8px 0;">
-                    <div style="font-weight: bold;">🎟 {display_name}</div>
-                    <div>Qty: {item.qty} × {price:,} ₸</div>
-                    <div style="font-weight: bold; color: #2196F3;">Subtotal: {item_total:,} ₸</div>
+                <div class="cart-item-card">
+                    <div class="cart-item-title">🎟 {display_name}</div>
+                    <div class="cart-item-details">Qty: {item.qty} × {price:,} ₸</div>
+                    <div class="cart-item-subtotal">Subtotal: {item_total:,} ₸</div>
                 </div>
                 """, 
                 unsafe_allow_html=True
             )
 
-            # Кнопка удаления - публикуем в ГЛОБАЛЬНУЮ шину
-            if st.sidebar.button(f"🗑 Remove", key=f"cart_remove_{i}"):
-                # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ CANCELLED
-                event_bus.publish("CANCELLED", {
-                    "cart_item_id": item.id,
-                    "ticket_type_id": item.ticket_type_id,
-                    "quantity": item.qty,
-                    "display_name": display_name,
-                    "reason": "user_removed_from_cart",
-                    "user_id": st.session_state.user.id,
-                    "timestamp": datetime.now().isoformat()
-                })
-                
-                st.session_state.cart.pop(i)
-                st.sidebar.success(f"Removed {display_name} from cart!")
-                st.rerun()
+            # Кнопка удаления с CSS классом
+            if st.sidebar.button(f"🗑 Remove", key=f"cart_remove_{i}", use_container_width=True):
+                    # ✅ ГЕНЕРИРУЕМ ГЛОБАЛЬНОЕ СОБЫТИЕ CANCELLED
+                    event_bus.publish("CANCELLED", {
+                        "cart_item_id": item.id,
+                        "ticket_type_id": item.ticket_type_id,
+                        "quantity": item.qty,
+                        "display_name": display_name,
+                        "reason": "user_removed_from_cart",
+                        "user_id": st.session_state.user.id,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    
+                    st.session_state.cart.pop(i)
+                    st.sidebar.success(f"Removed {display_name} from cart!")
+                    st.rerun()
 
         # Итоговая сумма и оформление заказа
         if total > 0:
             st.sidebar.markdown("---")
             st.sidebar.markdown(
                 f"""
-                <div style="background: #e3f2fd; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 1.2em; font-weight: bold; text-align: center;">
-                        💰 Total: {total:,} ₸
-                    </div>
+                <div class="cart-total-section">
+                    <div class="cart-total-amount">💰 Total: {total:,} ₸</div>
                 </div>
                 """, 
                 unsafe_allow_html=True
@@ -184,6 +186,7 @@ def cart_section():
             st.sidebar.markdown("---")
             st.sidebar.markdown("#### 👤 Order Information")
             
+            
             user_age = st.sidebar.number_input(
                 "🎂 Your age", 
                 min_value=0, 
@@ -192,15 +195,16 @@ def cart_section():
                 value=25,
                 help="Required for age-restricted events"
             )
+            
 
-            # Кнопка оформления заказа
+            # Кнопка оформления заказа с CSS классом
             if st.sidebar.button(
                 "💳 Checkout & Purchase", 
                 key="checkout_btn", 
                 use_container_width=True,
                 type="primary"
             ):
-                from core.compose import create_order_pipeline
+
 
                 # ✅ ИСПРАВЛЕНИЕ: используем st.spinner() вместо st.sidebar.spinner()
                 with st.spinner("🔄 Processing your order..."):
@@ -328,13 +332,13 @@ def cart_section():
                     })
 
     else:
-        # Пустая корзина
+        # Пустая корзина с новыми CSS классами
         st.sidebar.markdown(
             """
-            <div style="text-align: center; padding: 20px; color: #666;">
-                <div style="font-size: 3em;">🛒</div>
-                <div style="font-size: 1.2em; font-weight: bold;">Your cart is empty</div>
-                <div>Add some tickets to get started!</div>
+            <div class="empty-cart">
+                <div class="empty-cart-icon">🛒</div>
+                <div class="empty-cart-title">Your cart is empty</div>
+                <div class="empty-cart-subtitle">Add some tickets to get started!</div>
             </div>
             """, 
             unsafe_allow_html=True
@@ -729,56 +733,8 @@ def venue_details_page():
                 st.markdown("---")
         else:
             st.info("No halls available for this venue")
-def venue_details_page():
-    st.markdown('<div class="section-header">🏟️ Venue Details</div>', unsafe_allow_html=True)
-    
-    if not st.session_state.venues:
-        st.info("No venues available")
-        return
-    
-    # Выбор площадки
-    venue_options = [f"{v.name} ({v.city})" for v in st.session_state.venues]
-    selected_venue = st.selectbox("Select Venue", venue_options)
-    
-    if selected_venue:
-        venue_name = selected_venue.split(" (")[0]
-        venue = next((v for v in st.session_state.venues if v.name == venue_name), None)
-        
-        if venue:
-            st.header(venue.name)
-            st.write(f"📍 {venue.city}")
+
             
-            # Находим залы этой площадки
-            venue_halls = [h for h in st.session_state.halls if h.venue_id == venue.id]
-            
-            for hall in venue_halls:
-                st.subheader(f"🎪 {hall.name}")
-                st.write(f"Capacity: {hall.capacity} people")
-                
-                # ИСПОЛЬЗУЕМ РЕКУРСИЮ - получаем зоны этого зала
-                hall_zones = [z for z in st.session_state.zones if z.hall_id == hall.id]
-                
-                if hall_zones:
-                    # Находим корневые зоны (без parent_id)
-                    root_zones = [z for z in hall_zones if z.parent_id is None]
-                    
-                    for root_zone in root_zones:
-                        with st.expander(f"📋 {root_zone.name} - Seating Structure"):
-                            # РЕКУРСИЯ: получаем иерархию зон
-                            zone_hierarchy = get_zone_hierarchy(tuple(hall_zones), root_zone.id)
-                            
-                            # РЕКУРСИЯ: подсчитываем общее количество мест
-                            total_seats = calculate_total_seats(tuple(hall_zones), root_zone.id)
-                            
-                            st.write(f"**Total seats:** {total_seats}")
-                            st.write("**Zone hierarchy:**")
-                            
-                            for zone, level in zone_hierarchy:
-                                indent = "&nbsp;" * (level * 4)
-                                seats_info = f" - {zone.seats} seats" if zone.seats else " - Standing area"
-                                st.markdown(f"{indent}📌 {zone.name}{seats_info}", unsafe_allow_html=True)
-                
-                st.markdown("---")
 def reports_page():
     st.markdown('<div class="section-header">📊 Reports & Analytics</div>', unsafe_allow_html=True)
     
@@ -1023,7 +979,6 @@ def test_either_demo():
 
 def test_pipeline_demo():
     """Демо полного пайплайна (автоматический запуск без кнопок)"""
-    from core.compose import create_order_pipeline
 
     st.markdown("### 📦 Full Order Pipeline Demo")
     st.divider()
@@ -1071,6 +1026,7 @@ def get_ticket_display_name_safe(ticket_type_id):
         return f"{ticket_type.title} - {event_name}"
     except:
         return f"Ticket {ticket_type_id}"
+    
 def frp_page():
     st.markdown("### 🚀 FRP - Real-time Event Processing (Global Event Bus)")
     
@@ -1107,31 +1063,30 @@ def frp_page():
     # Основные метрики из ГЛОБАЛЬНОГО состояния
     st.markdown("#### 📊 Live System Metrics")
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         searches_count = len([e for e in events_history if e.name == "SEARCH"])
         st.metric("Searches", searches_count, delta=None)
-    
+        
+        cancellations_count = len([e for e in events_history if e.name == "CANCELLED"])
+        st.metric("Cancellations", cancellations_count)
+
     with col2:
         holds_count = len([e for e in events_history if e.name == "HOLD"])
         st.metric("Total Holds", holds_count)
         st.metric("Active Holds", stats["active_holds"])
-    
+
     with col3:
         purchases_count = stats["total_purchases"]
         st.metric("Purchases", purchases_count)
         st.metric("Revenue", f"{stats['total_revenue']:,} ₸")
-    
+
     with col4:
         scans_count = stats["total_scans"]
         # ✅ ИСПРАВЛЕННЫЙ Success Rate - проверяем деление на ноль
         success_rate = (stats["successful_scans"] / max(scans_count, 1)) * 100
         st.metric("Total Scans", scans_count)
         st.metric("Success Rate", f"{success_rate:.1f}%")
-    
-    # Cancellations отдельно
-    cancellations_count = len([e for e in events_history if e.name == "CANCELLED"])
-    st.metric("Cancellations", cancellations_count)
     
     # Live events feed из ГЛОБАЛЬНОЙ истории - ИСПРАВЛЕННОЕ ВРЕМЯ
     st.markdown("#### 📋 Global Event Stream (Live)")
@@ -1187,10 +1142,80 @@ def frp_page():
                 unsafe_allow_html=True
             )
             
+            def _display_event_payload(event):
+                """Красиво отображает payload события вместо сырого JSON"""
+                payload = event.payload
+                
+                if event.name == "PURCHASED":
+                    st.markdown("#### 💰 Purchase Details")
+                    st.write(f"**Order ID:** `{payload.get('order_id', 'N/A')}`")
+                    st.write(f"**Total Amount:** **{payload.get('total_amount', 0):,} {payload.get('currency', '₸')}**")
+                    st.write(f"**User:** {payload.get('user_id', 'Unknown')} (Age: {payload.get('user_age', 'N/A')})")
+                    st.write(f"**Status:** {payload.get('status', 'N/A')}")
+                    
+                    items = payload.get('items', [])
+                    if items:
+                        st.markdown("**Items:**")
+                        for i, item in enumerate(items):
+                            st.write(f"- **{item.get('display_name', 'Unknown')}**")
+                            st.write(f"  Quantity: {item.get('quantity', 1)} × {item.get('unit_price', 0):,} ₸ = **{item.get('quantity', 1) * item.get('unit_price', 0):,} ₸**")
+                
+                elif event.name == "HOLD":
+                    st.markdown("#### 📦 Hold Details")
+                    st.write(f"**Order ID:** `{payload.get('order_id', 'N/A')}`")
+                    st.write(f"**Total Amount:** **{payload.get('total_amount', 0):,} ₸**")
+                    st.write(f"**User:** {payload.get('user_id', 'Unknown')}")
+                    st.write(f"**Status:** {payload.get('status', 'N/A')}")
+                    
+                    items = payload.get('items', [])
+                    if items:
+                        st.markdown("**Held Items:**")
+                        for i, item in enumerate(items):
+                            st.write(f"- {item.get('display_name', 'Unknown')} (Qty: {item.get('quantity', 1)})")
+                
+                elif event.name == "SCANNED":
+                    st.markdown("#### 🎫 Scan Details")
+                    status_icon = "✅" if payload.get('ok', False) else "❌"
+                    st.write(f"**Status:** {status_icon} {'Successful' if payload.get('ok', False) else 'Failed'}")
+                    st.write(f"**Gate ID:** `{payload.get('gate_id', 'Unknown')}`")
+                    st.write(f"**Order ID:** `{payload.get('order_id', 'Unknown')}`")
+                
+                elif event.name == "SEARCH":
+                    st.markdown("#### 🔍 Search Details")
+                    st.write(f"**Search Type:** {payload.get('search_type', 'General')}")
+                    st.write(f"**User:** {payload.get('user_id', 'Anonymous')}")
+                    if 'city' in payload:
+                        st.write(f"**City:** {payload.get('city')}")
+                    if 'price_range' in payload:
+                        st.write(f"**Price Range:** {payload.get('price_range')}")
+                
+                elif event.name == "CANCELLED":
+                    st.markdown("#### ❌ Cancellation Details")
+                    st.write(f"**Reason:** {payload.get('reason', 'Unknown')}")
+                    if 'order_id' in payload:
+                        st.write(f"**Order ID:** `{payload.get('order_id')}`")
+                    if 'error_message' in payload:
+                        st.write(f"**Error:** {payload.get('error_message')}")
+                
+                elif event.name == "PRICE_CHANGED":
+                    st.markdown("#### 📊 Price Change Details")
+                    st.write(f"**Ticket Type:** `{payload.get('ticket_type_id', 'Unknown')}`")
+                    st.write(f"**Old Price:** {payload.get('old_price', 0):,} ₸")
+                    st.write(f"**New Price:** **{payload.get('new_price', 0):,} ₸**")
+                    st.write(f"**Reason:** {payload.get('reason', 'N/A')}")
+                    st.write(f"**Change:** **{payload.get('new_price', 0) - payload.get('old_price', 0):+,} ₸**")
+                
+                else:
+                    # Для неизвестных типов событий показываем форматированный JSON
+                    st.markdown("#### 📄 Raw Event Data")
+                    import json
+                    formatted_json = json.dumps(payload, indent=2, ensure_ascii=False)
+                    st.code(formatted_json, language='json')
+
             # Дополнительная информация о событии
             if event.payload:
                 with st.expander("Event Details", expanded=False):
-                    st.json(event.payload)
+                    _display_event_payload(event)
                     
                     # Показываем сколько времени прошло с момента события
                     try:
@@ -1380,6 +1405,302 @@ def frp_page():
         st.write(f"**Last event:** {events_history[-1].name if events_history else 'None'}")
         st.write(f"**Current time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
+
+def pipelines_page():
+    st.markdown('<div class="section-header">🔗 Pipelines & Services</div>', unsafe_allow_html=True)
+    
+    # Search → Quotation/Purchase → Entry/Flows → Report
+    tab1, tab2, tab3, tab4 = st.tabs(["🔍 Search", "🎫 Purchase", "🚪 Flows", "📊 Report"])
+    
+    with tab1:
+        st.markdown("#### 🔍 Ticket Search")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            city = st.selectbox("City", ["All", "Almaty", "Astana", "London", "Sydney"], key="search_city")
+        
+        with col2:
+            min_price, max_price = st.slider("Price Range (₸)", 0, 50000, (1000, 20000), 1000, key="search_price")
+        
+        if st.button("🔍 Find Tickets", type="primary", key="search_btn"):
+            try:
+                from core.service import CatalogService
+                
+                # Create service with filters
+                service = CatalogService({
+                    "city_filter": lambda x: x,
+                    "price_filter": lambda x: x
+                })
+                
+                # Execute search with data parameters
+                results = service.search(
+                    req={
+                        "city": city,
+                        "price_range": (min_price, max_price)
+                    },
+                    ticket_types=tuple(st.session_state.ticket_types),
+                    events=tuple(st.session_state.events),
+                    venues=tuple(st.session_state.venues),
+                    halls=tuple(st.session_state.halls),
+                    prices=tuple(st.session_state.prices),
+                    quotas=tuple(st.session_state.quotas)
+                )
+                
+                st.success(f"🎉 Found {len(results)} tickets!")
+                
+                # Сохраняем результаты в session_state
+                st.session_state.pipeline_search_results = results
+                
+            except ImportError as e:
+                st.error(f"Service import error: {e}")
+            except Exception as e:
+                st.error(f"Search error: {e}")
+        
+        # Показываем результаты
+        if hasattr(st.session_state, 'pipeline_search_results'):
+            results = st.session_state.pipeline_search_results
+            
+            if results:
+                for i, ticket_id in enumerate(results):
+                    ticket = next((t for t in st.session_state.ticket_types if t.id == ticket_id), None)
+                    if ticket:
+                        event = next((e for e in st.session_state.events if e.id == ticket.event_id), None)
+                        price = next((p.amount for p in st.session_state.prices if p.ticket_type_id == ticket.id), 0)
+                        quota = next((q for q in st.session_state.quotas if q.ticket_type_id == ticket.id), None)
+                        
+                        col_a, col_b = st.columns([3, 1])
+                        with col_a:
+                            st.write(f"**{ticket.title}**")
+                            st.write(f"🎭 {event.title if event else 'Unknown'}")
+                            st.write(f"💰 {price:,} ₸")
+                            if quota:
+                                st.write(f"📊 Available: {quota.total - quota.sold}")
+                        
+                        with col_b:
+                            if st.session_state.user:
+                                if st.button("🛒 Add to Cart", key=f"pipe_search_{ticket.id}_{i}"):
+                                    from core.domain import CartItem
+                                    cart_item = CartItem(
+                                        id=f"pipe_cart_{len(st.session_state.cart)}_{ticket.id}",
+                                        ticket_type_id=ticket.id,
+                                        qty=1
+                                    )
+                                    st.session_state.cart.append(cart_item)
+                                    st.success(f"✅ Added: {ticket.title}")
+                                    st.rerun()
+                            else:
+                                st.info("🔐 Login to buy")
+                        
+                        st.markdown("---")
+            else:
+                st.info("🔍 No tickets found. Try different filters.")
+    
+    with tab2:
+        st.markdown("#### 🎫 Ticket Purchase")
+        
+        if st.session_state.user:
+            if st.session_state.cart:
+                st.write("**Current Cart:**")
+                total = 0
+                for item in st.session_state.cart:
+                    ticket = next((t for t in st.session_state.ticket_types if t.id == item.ticket_type_id), None)
+                    price = next((p.amount for p in st.session_state.prices if p.ticket_type_id == item.ticket_type_id), 0)
+                    item_total = price * item.qty
+                    total += item_total
+                    st.write(f"- {ticket.title if ticket else 'Unknown'}: {item.qty} × {price:,} ₸ = {item_total:,} ₸")
+                
+                st.write(f"**Total: {total:,} ₸**")
+                
+                # User information
+                user_age = st.number_input("Your Age", min_value=0, max_value=120, value=25, key="purchase_age")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("💰 Confirm Order", type="primary", key="confirm_order"):
+                        try:
+                            from core.service import TicketService
+                            from core.domain import Order
+                            
+                            # Create test order from cart
+                            test_order = Order(
+                                id=f"order_{int(time.time())}",
+                                event_id=st.session_state.cart[0].ticket_type_id,
+                                items=tuple(st.session_state.cart),
+                                total=total,
+                                status="pending"
+                            )
+                            
+                            # Create service with validators
+                            service = TicketService(
+                                quoter=lambda x: x,
+                                validators=(
+                                    lambda order: order,
+                                    lambda order: order,
+                                ),
+                                finalizer=lambda order: order
+                            )
+                            
+                            # Execute order confirmation with data parameters
+                            result = create_order_pipeline(
+                                tuple(st.session_state.cart),
+                                tuple(st.session_state.ticket_types),
+                                tuple(st.session_state.quotas),
+                                tuple(st.session_state.rules),
+                                tuple(st.session_state.prices),
+                                user_age=user_age  # ✅ create_order_pipeline принимает user_age
+                            )
+                            
+                            if hasattr(result, 'value'):
+                                confirmed_order = result.value
+                                st.success("✅ Order confirmed successfully!")
+                                st.write(f"**Order ID:** {confirmed_order.id}")
+                                st.write(f"**Status:** {confirmed_order.status}")
+                                st.write(f"**Final Amount:** {confirmed_order.total:,} ₸")
+                                
+                                # Clear cart after successful order
+                                st.session_state.cart = []
+                                st.rerun()
+                            else:
+                                st.error("❌ Order confirmation failed")
+                                error_data = result.error
+                                st.write(f"**Error:** {error_data.get('error', 'Unknown error')}")
+                                if 'message' in error_data:
+                                    st.write(f"**Details:** {error_data['message']}")
+                        except ImportError as e:
+                            st.error(f"Service import error: {e}")
+                        except Exception as e:
+                            st.error(f"Order confirmation error: {e}")
+                
+                with col2:
+                    if st.button("🔄 Clear Cart", key="clear_cart"):
+                        st.session_state.cart = []
+                        st.rerun()
+            else:
+                st.info("🛒 Cart is empty. Add tickets through search.")
+        else:
+            st.warning("🔐 Please login to place orders")
+    
+    with tab3:
+        st.markdown("#### 📊 Event Analytics")  # меняем название
+        
+        # Выбираем событие для анализа
+        event_options = [f"{e.title} ({e.id})" for e in st.session_state.events]
+        selected_event = st.selectbox("Select Event", event_options, key="analytics_event")
+        
+        analysis_type = st.selectbox("Analysis Type", 
+                                    ["ticket sales", "revenue", "popularity"], 
+                                    key="analysis_type")
+        
+        if st.button("📈 Generate Analytics", key="generate_analytics"):
+            try:
+                # Получаем ID выбранного события
+                event_id = selected_event.split("(")[-1].replace(")", "")
+                
+                # Анализируем реальные данные
+                event_orders = [o for o in st.session_state.orders if o.event_id == event_id]
+                event_tickets = [t for t in st.session_state.ticket_types if t.event_id == event_id]
+                
+                if analysis_type == "ticket sales":
+                    total_sold = sum(len(o.items) for o in event_orders)
+                    st.success(f"🎫 **Ticket Sales for {selected_event}**")
+                    st.metric("Total Tickets Sold", total_sold)
+                    
+                    # Продажи по типам билетов
+                    ticket_sales = {}
+                    for order in event_orders:
+                        for item in order.items:
+                            ticket = next((t for t in event_tickets if t.id == item.ticket_type_id), None)
+                            if ticket:
+                                ticket_sales[ticket.title] = ticket_sales.get(ticket.title, 0) + item.qty
+                    
+                    if ticket_sales:
+                        st.write("**Sales by Ticket Type:**")
+                        for ticket_type, count in ticket_sales.items():
+                            st.write(f"- {ticket_type}: {count} tickets")
+                
+                elif analysis_type == "revenue":
+                    total_revenue = sum(o.total for o in event_orders)
+                    st.success(f"💰 **Revenue for {selected_event}**")
+                    st.metric("Total Revenue", f"{total_revenue:,} ₸")
+                    st.metric("Number of Orders", len(event_orders))
+                
+                elif analysis_type == "popularity":
+                    # "Популярность" на основе продаж
+                    total_sold = sum(len(o.items) for o in event_orders)
+                    event = next((e for e in st.session_state.events if e.id == event_id), None)
+                    
+                    st.success(f"📊 **Popularity Analysis for {selected_event}**")
+                    st.metric("Total Tickets Sold", total_sold)
+                    
+                    if event and hasattr(event, 'capacity'):
+                        venue = next((v for v in st.session_state.venues 
+                                    if v.id == next((h.venue_id for h in st.session_state.halls 
+                                                if h.id == event.hall_id), None)), None)
+                        if venue:
+                            st.write(f"Venue: {venue.name}")
+                            # Простой процент "заполняемости"
+                            if hasattr(event, 'capacity'):
+                                fill_rate = (total_sold / event.capacity) * 100
+                                st.metric("Venue Fill Rate", f"{fill_rate:.1f}%")
+                
+            except Exception as e:
+                st.error(f"Analytics error: {e}")
+    
+    with tab4:
+        st.markdown("#### 📊 Sales Report")
+        
+        report_date = st.selectbox("Report Date", 
+                                 ["2025-01-15", "2025-01-20", "2025-02-01", "2025-03-10", "2025-03-20"],
+                                 key="report_date")
+        
+        report_type = st.selectbox("Report Type", ["sales", "revenue", "tickets"], key="report_type")
+        
+        if st.button("📈 Generate Report", key="generate_report"):
+            try:
+                from core.service import ReportService
+                
+                # Create service with aggregators
+                service = ReportService({
+                    "sales_aggregator": lambda x: x,
+                    "revenue_analyzer": lambda x: x
+                })
+                
+                # Generate report with data parameters
+                report = service.daily_report(
+                    date=report_date,
+                    orders=tuple(st.session_state.orders),
+                    ticket_types=tuple(st.session_state.ticket_types)
+                )
+                
+                st.success("✅ Report generated!")
+                
+                # Key metrics
+                st.markdown("##### 📊 Key Metrics")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Revenue", f"{report['total_revenue']:,} ₸")
+                with col2:
+                    st.metric("Tickets Sold", report["total_tickets_sold"])
+                with col3:
+                    st.metric("Average Price", f"{report['average_ticket_price']:,.0f} ₸")
+                with col4:
+                    st.metric("Number of Orders", report["number_of_orders"])
+                
+                # Ticket type breakdown
+                if report.get("ticket_type_breakdown"):
+                    st.markdown("##### 🎫 Ticket Type Distribution")
+                    for ticket_type, count in report["ticket_type_breakdown"].items():
+                        st.write(f"- **{ticket_type}**: {count} pcs")
+                
+                # Additional information
+                st.markdown("##### 📈 Additional Information")
+                st.write(f"- **Revenue Trend**: {report.get('revenue_trend', 'N/A')}")
+                st.write(f"- **Performance Rating**: {report.get('performance_rating', 'N/A')}")
+            except ImportError as e:
+                st.error(f"Service import error: {e}")
+            except Exception as e:
+                st.error(f"Report generation error: {e}")
+
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
 login_section()
@@ -1390,12 +1711,15 @@ st.sidebar.markdown("## 🧭 Navigation")
 
 pages = ["🏠 Overview", "🎪 Events", "🎫 Tickets", "🎯 Advanced Search", "🏟 Venue Details"]
 
-# Только админ видит Admin, Reports и Functional Core
+# Только админ видит технические страницы
 if st.session_state.user and is_admin(st.session_state.user):
-    pages.append("👨‍💼 Admin")
-    pages.append("📊 Reports")
-    pages.append("⚡️ Functional Core")
-    pages.append("🔄 FRP")  # ← ДОБАВЬ ЭТУ СТРОЧКУ!
+    pages.extend([
+        "👨‍💼 Admin",
+        "📊 Reports", 
+        "⚡️ Functional Core",
+        "🔄 FRP",
+        "🔗 Pipelines"
+    ])
 
 page = st.sidebar.radio("Go to:", pages, key="nav_radio")
 
@@ -1418,3 +1742,5 @@ elif "⚡️" in page:
     functional_core_page()
 elif "🔄" in page:
     frp_page()
+elif "🔗" in page:
+    pipelines_page()

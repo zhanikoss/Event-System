@@ -6,27 +6,21 @@ body, [data-testid="stAppViewContainer"] {
     overflow-x: hidden;
 }
 
-/* === FLOATY HEADER === */
+/* === HEADERS & TITLES === */
 .main-header {
     font-size: 3.2rem;
     font-weight: 800;
     text-align: center;
-    color: #ffffff !important;  /* белый текст */
+    color: #ffffff !important;
     margin: 2.5rem 0 1rem;
     letter-spacing: 1.5px;
     text-shadow: 
-        0 0 5px rgba(255, 255, 255, 0.6),   /* лёгкое белое свечение */
-        0 0 10px rgba(255, 200, 245, 0.4),  /* мягкий розовый glow */
-        0 0 15px rgba(253, 26, 149, 0.3);   /* чуть более яркий цветной glow */
+        0 0 5px rgba(255, 255, 255, 0.6),
+        0 0 10px rgba(255, 200, 245, 0.4),
+        0 0 15px rgba(253, 26, 149, 0.3);
     animation: floatHeader 4s ease-in-out infinite alternate;
 }
 
-@keyframes floatHeader {
-    from { transform: translateY(0); }
-    to { transform: translateY(-5px); }
-}
-
-/* === SECTION TITLES === */
 .section-header {
     font-size: 1.9rem;
     color: #FD1A95;
@@ -36,9 +30,14 @@ body, [data-testid="stAppViewContainer"] {
     font-weight: 600;
 }
 
+@keyframes floatHeader {
+    from { transform: translateY(0); }
+    to { transform: translateY(-5px); }
+}
+
 /* === GLASS CARDS === */
 .metric-card, .event-card, .ticket-card, .admin-card {
-    background: rgba(255, 234, 245, 0.65);  /* чуть более белый, молочный */
+    background: rgba(255, 234, 245, 0.65);
     backdrop-filter: blur(12px);
     border-radius: 18px;
     padding: 1.7rem;
@@ -62,12 +61,11 @@ body, [data-testid="stAppViewContainer"] {
     box-shadow: 0 8px 16px rgba(253, 26, 149, 0.25);
     transition: all 0.3s ease;
     width: 100%;
-    min-height: 250px; /* чуть выше, чтобы «воздушнее» */
+    min-height: 250px;
     position: relative;
     overflow: hidden;
 }
 
-/* Текст внутри карточки */
 .metric-card h3 {
     font-size: 1.3rem;
     margin-bottom: 0.3rem;
@@ -82,21 +80,6 @@ body, [data-testid="stAppViewContainer"] {
     opacity: 0.9;
     position: relative;
     z-index: 1;
-}
-
-/* === CART ITEMS === */
-.cart-item {
-    background: linear-gradient(90deg, #FFEAF5, #FD78EA);
-    padding: 1rem;
-    border-radius: 12px;
-    margin: 0.5rem 0;
-    box-shadow: 0 4px 12px rgba(253, 26, 149, 0.15);
-    border-left: 6px solid #FD1A95;
-    transition: 0.3s ease;
-}
-
-.cart-item:hover {
-    transform: scale(1.02);
 }
 
 /* === BUTTONS === */
@@ -125,10 +108,129 @@ section[data-testid="stSidebar"] {
     backdrop-filter: blur(12px);
 }
 
+/* === CART STYLES === */
+.cart-item-container {
+    margin-bottom: 1rem;
+}
+
+.cart-item-card {
+    background: linear-gradient(135deg, #FFEAF5, #FFD6F0) !important;
+    border: 1px solid #FD78EA !important;
+    border-radius: 12px !important;
+    padding: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    box-shadow: 0 4px 12px rgba(253, 26, 149, 0.15) !important;
+    transition: all 0.3s ease !important;
+}
+
+.cart-item-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 18px rgba(253, 26, 149, 0.25) !important;
+    border: 1px solid #FF4DC4 !important;
+}
+
+.cart-item-title {
+    font-weight: bold !important;
+    color: #D00072 !important;
+    font-size: 1rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.cart-item-details {
+    color: #8A0066 !important;
+    font-size: 0.9rem !important;
+    margin-bottom: 0.4rem !important;
+    font-weight: 500 !important;
+}
+
+.cart-item-subtotal {
+    font-weight: bold !important;
+    color: #FF1A95 !important;
+    font-size: 1rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.cart-total-section {
+    background: linear-gradient(135deg, #FFE0F5, #FD78EA) !important;
+    padding: 1rem !important;
+    border-radius: 12px !important;
+    margin: 1rem 0 !important;
+    border: 1px solid #FF1A95 !important;
+    box-shadow: 0 4px 15px rgba(253, 26, 149, 0.2) !important;
+}
+
+.cart-total-amount {
+    font-size: 1.3em !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    color: #FFFFFF !important;
+}
+
+.empty-cart {
+    text-align: center !important;
+    padding: 2rem 1rem !important;
+    background: linear-gradient(135deg, #FFF0F8, #FFE0F5) !important;
+    border-radius: 12px !important;
+    border: 1px dashed #FD78EA !important;
+    margin: 1rem 0 !important;
+}
+
+.empty-cart-icon {
+    font-size: 3em !important;
+    margin-bottom: 1rem !important;
+}
+
+.empty-cart-title {
+    font-size: 1.2em !important;
+    font-weight: 700 !important;
+    margin-bottom: 0.5rem !important;
+    color: #D00072 !important;
+}
+
+.empty-cart-subtitle {
+    font-size: 0.9em !important;
+    color: #8A0066 !important;
+    font-weight: 500 !important;
+}
+
+/* === EVENT PAYLOAD STYLING === */
+.event-payload-section {
+    background: rgba(255, 245, 250, 0.9) !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    margin: 0.5rem 0 !important;
+    border-left: 4px solid #FD78EA !important;
+}
+
+.event-payload-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 0.5rem 0 !important;
+    border-bottom: 1px solid #FFE0F5 !important;
+}
+
+.event-payload-item:last-child {
+    border-bottom: none !important;
+}
+
+.event-payload-key {
+    font-weight: 600 !important;
+    color: #D00072 !important;
+    min-width: 120px !important;
+}
+
+.event-payload-value {
+    color: #2c2c2c !important;
+    text-align: right !important;
+    flex-grow: 1 !important;
+}
+
 /* === SCROLLBAR === */
 ::-webkit-scrollbar {
     width: 10px;
 }
+
 ::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #FD78EA, #FD1A95);
     border-radius: 10px;
@@ -139,18 +241,206 @@ section[data-testid="stSidebar"] {
     transition: none !important;
 }
 
-/* === DARK MODE === */
+/* === DARK THEME === */
 @media (prefers-color-scheme: dark) {
     body, [data-testid="stAppViewContainer"] {
-        background: radial-gradient(circle, #2E1F2F 0%, #3E2B4F 100%) !important;
+        background: radial-gradient(circle at top left, #2E1F2F 0%, #3E2B4F 50%, #4A2F5D 100%) !important;
         color: #FEEFFF !important;
     }
+
+    .main-header {
+        color: #ffffff !important;
+        text-shadow: 
+            0 0 5px rgba(255, 255, 255, 0.7),
+            0 0 10px rgba(253, 120, 234, 0.5),
+            0 0 15px rgba(251, 15, 222, 0.4);
+    }
+
+    .section-header {
+        color: #FD78EA;
+        border-left: 8px solid #FB0FDE;
+    }
+
     .metric-card, .event-card, .ticket-card, .admin-card {
-        background: rgba(45, 35, 55, 0.8) !important;
-        border: 1px solid #FB0FDE;
+        background: rgba(45, 35, 55, 0.8);
+        border: 2px solid rgba(253, 120, 234, 0.3);
+        box-shadow: 0 6px 20px rgba(251, 15, 222, 0.25);
         color: #FEEFFF;
     }
+
+    .metric-card {
+        background: linear-gradient(135deg, #3E2B4F, #4A2F5D, #5A3A6B);
+        color: #FEEFFF;
+        box-shadow: 0 8px 16px rgba(251, 15, 222, 0.3);
+    }
+
+    .metric-card h3 {
+        color: #FD78EA;
+    }
+
+    .metric-card p {
+        color: #E6D6E6;
+    }
+
+    .stButton button {
+        background: linear-gradient(90deg, #FD78EA, #FB0FDE, #D00072);
+        box-shadow: 0 4px 10px rgba(251, 15, 222, 0.3);
+    }
+
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #2E1F2F, #3E2B4F) !important;
+        background: linear-gradient(180deg, #3E2B4F, #5A3A6B) !important;
+        color: #FEEFFF !important;
+    }
+
+    /* Cart Dark Theme */
+    .cart-item-card {
+        background: linear-gradient(135deg, #3D1A3D, #5C2A5C) !important;
+        border: 1px solid #FF80D5 !important;
+    }
+
+    .cart-item-title {
+        color: #FF80D5 !important;
+    }
+
+    .cart-item-details {
+        color: #E6B8E6 !important;
+    }
+
+    .cart-item-subtotal {
+        color: #FF66CC !important;
+    }
+
+    .cart-total-section {
+        background: linear-gradient(135deg, #5C2A5C, #7A3A7A) !important;
+        border: 1px solid #FF4DC4 !important;
+    }
+
+    .empty-cart {
+        background: linear-gradient(135deg, #3D1A3D, #4A2A4A) !important;
+        border: 1px dashed #FF80D5 !important;
+    }
+
+    .empty-cart-title {
+        color: #FF80D5 !important;
+    }
+
+    .empty-cart-subtitle {
+        color: #CC99CC !important;
+    }
+
+    /* Event Payload Dark Theme */
+    .event-payload-section {
+        background: rgba(60, 25, 60, 0.9) !important;
+        border-left: 4px solid #FF80D5 !important;
+    }
+
+    .event-payload-key {
+        color: #FF80D5 !important;
+    }
+
+    .event-payload-value {
+        color: #FFE6F5 !important;
+    }
+
+    .event-payload-item {
+        border-bottom: 1px solid #5C2A5C !important;
+    }
+
+    /* Scrollbar Dark Theme */
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #FD78EA, #FB0FDE);
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #2E1F2F;
+    }
+
+    /* Form Elements Dark Theme */
+    .stTextInput input, .stNumberInput input, .stSelectbox select {
+        background: rgba(45, 35, 55, 0.8) !important;
+        color: #FEEFFF !important;
+        border: 1px solid #FD78EA !important;
+    }
+
+    .stTable {
+        background: rgba(45, 35, 55, 0.8) !important;
+        color: #FEEFFF !important;
+    }
+
+    .streamlit-expanderHeader {
+        background: rgba(45, 35, 55, 0.8) !important;
+        color: #FEEFFF !important;
+        border: 1px solid #FD78EA !important;
+    }
+
+    .stCodeBlock {
+        background: rgba(45, 35, 55, 0.9) !important;
+        border: 1px solid #FD78EA !important;
+    }
+}
+
+/* === CART BUTTONS FIX === */
+/* Увеличиваем все кнопки в сайдбаре корзины */
+section[data-testid="stSidebar"] .stButton button {
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0.5rem 0 !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Специально для кнопок Remove */
+section[data-testid="stSidebar"] .stButton button {
+    background: linear-gradient(135deg, #FF80D5, #FF4DC4) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0.8rem 1.5rem !important;
+    font-size: 0.95rem !important;
+    box-shadow: 0 2px 8px rgba(255, 77, 196, 0.3) !important;
+}
+
+section[data-testid="stSidebar"] .stButton button:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(255, 77, 196, 0.5) !important;
+    background: linear-gradient(135deg, #FF66CC, #FF3399) !important;
+}
+
+/* Кнопка Checkout (primary) */
+section[data-testid="stSidebar"] .stButton button[kind="primary"] {
+    background: linear-gradient(135deg, #FF4DC4, #FF1A95, #E6007A) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 1rem 2rem !important;
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    box-shadow: 0 4px 15px rgba(255, 26, 149, 0.4) !important;
+}
+
+section[data-testid="stSidebar"] .stButton button[kind="primary"]:hover {
+    transform: translateY(-2px) scale(1.03) !important;
+    box-shadow: 0 6px 20px rgba(255, 26, 149, 0.6) !important;
+    background: linear-gradient(135deg, #FF3399, #FF0080, #CC0066) !important;
+}
+
+/* Dark theme для кнопок корзины */
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] .stButton button {
+        background: linear-gradient(135deg, #FF66CC, #FF3399) !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton button:hover {
+        background: linear-gradient(135deg, #FF4DC4, #FF1A95) !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton button[kind="primary"] {
+        background: linear-gradient(135deg, #FF3399, #FF0080, #E6007A) !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #FF1A95, #E6007A, #CC0066) !important;
     }
 }
