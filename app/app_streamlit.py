@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import sys
 import time
+import asyncio
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.transforms import load_seed, average_price, get_ticket_display_name, get_ticket_price, validate_order
@@ -1700,7 +1701,98 @@ def pipelines_page():
                 st.error(f"Service import error: {e}")
             except Exception as e:
                 st.error(f"Report generation error: {e}")
+import asyncio
+from datetime import datetime
+import streamlit as st
 
+from core.domain import Event
+from core.async_ops import parallel_event_analysis, real_time_data_stream, progressive_calculation
+
+
+# ---- Lab 8 Page ----
+def lab8_async_page():
+    st.markdown('<div class="section-header">🚀 Lab 8: Real Async & Live Data Streams</div>', unsafe_allow_html=True)
+
+    # ---- Вкладки ----
+    tab1, tab2 = st.tabs(["🎯 Real Async Analysis", "🔄 Live Data Streams"])
+
+    # ---- REAL ASYNC ANALYSIS ----
+    with tab1:
+        st.markdown("#### 🎯 Real Async Analysis - Results Come When Ready!")
+
+        if not hasattr(st.session_state, "events"):
+            st.session_state.events = []  # здесь подставь свои Event объекты
+
+        selected_events = st.multiselect(
+            "Select events for analysis",
+            [f"{e.title} ({e.id})" for e in st.session_state.events],
+            default=[f"{e.title} ({e.id})" for e in st.session_state.events[:1]]
+        )
+
+        if st.button("⚡️ Start REAL Async Analysis"):
+            if not selected_events:
+                st.warning("Please select at least one event")
+                return
+
+            # Получаем объекты Event
+            event_ids = [e.split("(")[-1].replace(")", "") for e in selected_events]
+            events_to_analyze = [e for e in st.session_state.events if e.id in event_ids]
+
+            results_container = st.container()
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            import nest_asyncio
+            nest_asyncio.apply()  # безопасно для Windows
+
+            async def run_analysis():
+                results = []
+                async for message, result, completed, total in parallel_event_analysis(events_to_analyze):
+                    progress_bar.progress(completed / total)
+                    status_text.info(f"Progress: {completed}/{total} - {message}")
+
+                    # Показать результат СРАЗУ
+                    with results_container:
+                        st.success(f"✅ {message}")
+                        st.json(result)
+                        st.markdown("---")
+
+                    results.append(result)
+                return results
+
+            # Запускаем async задачу
+            asyncio.run(run_analysis())
+
+    # ---- LIVE DATA STREAMS ----
+    with tab2:
+        st.markdown("#### 🔄 Live Data Streams - Real-time Flow")
+        stream_container = st.container()
+
+        if st.button("🎬 Start Data Stream"):
+            import nest_asyncio
+            nest_asyncio.apply()
+
+            async def run_stream():
+                async for data in real_time_data_stream():
+                    with stream_container:
+                        st.write(f"📦 {data['gate']} - Batch {data['batch']}")
+                        st.write(f"Visitors: {data['visitors']}")
+                        st.write(f"Delay: {data['delay']}s")
+                        st.write(f"Time: {data['timestamp']}")
+                        st.markdown("---")
+
+            asyncio.run(run_stream())
+
+        if st.button("🧮 Progressive Calculation"):
+            calc_container = st.container()
+
+            async def run_progressive():
+                async for step in progressive_calculation():
+                    with calc_container:
+                        st.info(f"Step {step['progress']}/{step['total_steps']}: {step['step']}")
+
+            asyncio.run(run_progressive())
+            
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
 login_section()
@@ -1718,7 +1810,8 @@ if st.session_state.user and is_admin(st.session_state.user):
         "📊 Reports", 
         "⚡️ Functional Core",
         "🔄 FRP",
-        "🔗 Pipelines"
+        "🔗 Pipelines",
+        "🚀 Async"  
     ])
 
 page = st.sidebar.radio("Go to:", pages, key="nav_radio")
@@ -1744,3 +1837,5 @@ elif "🔄" in page:
     frp_page()
 elif "🔗" in page:
     pipelines_page()
+elif "🚀" in page:
+    lab8_async_page()
