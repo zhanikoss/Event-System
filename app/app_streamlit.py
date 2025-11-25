@@ -1721,7 +1721,7 @@ def lab8_async_page():
         st.markdown("#### 🎯 Real Async Analysis - Results Come When Ready!")
 
         if not hasattr(st.session_state, "events"):
-            st.session_state.events = []  # здесь подставь свои Event объекты
+            st.session_state.events = []
 
         selected_events = st.multiselect(
             "Select events for analysis",
@@ -1729,12 +1729,11 @@ def lab8_async_page():
             default=[f"{e.title} ({e.id})" for e in st.session_state.events[:1]]
         )
 
-        if st.button("⚡️ Start REAL Async Analysis"):
+        if st.button("⚡️ Start REAL Async Analysis", use_container_width=True):
             if not selected_events:
                 st.warning("Please select at least one event")
                 return
 
-            # Получаем объекты Event
             event_ids = [e.split("(")[-1].replace(")", "") for e in selected_events]
             events_to_analyze = [e for e in st.session_state.events if e.id in event_ids]
 
@@ -1743,7 +1742,7 @@ def lab8_async_page():
             status_text = st.empty()
 
             import nest_asyncio
-            nest_asyncio.apply()  # безопасно для Windows
+            nest_asyncio.apply()
 
             async def run_analysis():
                 results = []
@@ -1751,16 +1750,40 @@ def lab8_async_page():
                     progress_bar.progress(completed / total)
                     status_text.info(f"Progress: {completed}/{total} - {message}")
 
-                    # Показать результат СРАЗУ
+                    # Pretty report display
                     with results_container:
-                        st.success(f"✅ {message}")
-                        st.json(result)
+                        st.markdown(f'''
+                        <div class="async-report-card fade-in">
+                            <div class="report-header">
+                                <div class="report-icon">✅</div>
+                                <div>
+                                    <h3 style="margin: 0; color: #FD1A95;">{message}</h3>
+                                    <p style="margin: 0; color: #666;">Progress: {completed}/{total}</p>
+                                </div>
+                            </div>
+                            <div class="report-content">
+                                <h4 style="color: #FD1A95; margin-bottom: 1rem;">📊 Analysis Results</h4>
+                        ''', unsafe_allow_html=True)
+                        
+                        # Display results in pretty format
+                        if isinstance(result, dict):
+                            for key, value in result.items():
+                                st.markdown(f'''
+                                <div class="event-payload-item">
+                                    <span class="event-payload-key">{key}</span>
+                                    <span class="event-payload-value">{value}</span>
+                                </div>
+                                ''', unsafe_allow_html=True)
+                        else:
+                            st.json(result)
+                        
+                        st.markdown('</div></div>', unsafe_allow_html=True)
                         st.markdown("---")
 
                     results.append(result)
                 return results
 
-            # Запускаем async задачу
+
             asyncio.run(run_analysis())
 
     # ---- LIVE DATA STREAMS ----
@@ -1783,15 +1806,7 @@ def lab8_async_page():
 
             asyncio.run(run_stream())
 
-        if st.button("🧮 Progressive Calculation"):
-            calc_container = st.container()
-
-            async def run_progressive():
-                async for step in progressive_calculation():
-                    with calc_container:
-                        st.info(f"Step {step['progress']}/{step['total_steps']}: {step['step']}")
-
-            asyncio.run(run_progressive())
+        
             
 # Основное приложение
 st.sidebar.markdown("# 🎭 Event System")
